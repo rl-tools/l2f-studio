@@ -1,0 +1,3 @@
+[submodule "blob"]
+	path = blob
+	url = https://github.com/rl-tools/l2f-studio-blob.git
