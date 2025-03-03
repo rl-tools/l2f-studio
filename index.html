@@ -1,7 +1,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>L2F Studio</title>
+    <title>L2F Playground</title>
     <template id="perturbation-group-template" >
         <div class="perturbation-group">
             <div class="perturbation-group-targets"></div>
@@ -117,6 +117,21 @@
             text-align: center;
             overflow: hidden;
         }
+        #drag-and-drop-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            z-index: 1000;
+            font-size: 40px;
+        }
     </style>
     <script type="importmap">
         {
@@ -129,6 +144,7 @@
     </script>
     <script type="module">
         import {L2F} from "./l2f.js"
+        // import * as rlt from "/static/RLtools.js/rl_tools.js"
         import * as rlt from "./blob/rl_tools.js"
         import * as math from 'https://esm.sh/mathjs'
 
@@ -145,9 +161,12 @@
             return variance > 0 ?  Math.sqrt(variance / x.length) : 0;
         }
 
+        let model = null
         async function main(){
             const seed = 12
-            const model = await rlt.load(file_url)
+            if(model === null){
+                model = await rlt.load(file_url)
+            }
             function policy(state){
                 state.observe()
                 const input = math.matrix([[[...Array(state.observation_dim).keys()].map(i => state.get_observation(i))]])
@@ -477,6 +496,44 @@
             })
         }
         window.onload = main
+
+        const drag_and_drop_overlay = document.getElementById('drag-and-drop-overlay');
+        let drag_and_drop_counter = 0;
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+            document.body.addEventListener(event, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        document.body.addEventListener('dragenter', () => {
+            drag_and_drop_counter++;
+            drag_and_drop_overlay.style.display = 'flex';
+        }, false);
+
+        document.body.addEventListener('dragleave', () => {
+            drag_and_drop_counter--;
+            if (drag_and_drop_counter === 0) {
+                drag_and_drop_overlay.style.display = 'none';
+            }
+        }, false);
+
+        document.body.addEventListener('drop', e => {
+            drag_and_drop_counter = 0;
+            drag_and_drop_overlay.style.display = 'none';
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const array_buffer = e.target.result;
+                    model = rlt.load(array_buffer)
+                    console.log("loaded model: ", model)
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }, false);
     </script>
 </head>
 <body>
@@ -531,5 +588,6 @@
         <div id="perturbation-groups" class="controls-container">
         </div>
     </div>
+    <div id="drag-and-drop-overlay">Drop RLtools HDF5 checkpoint here!</div>
 </body>
 </html>
