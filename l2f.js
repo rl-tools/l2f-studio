@@ -82,6 +82,7 @@ export class L2F{
         else{
             this.states = this.states.slice(0, num)
         }
+        this.update_render_state()
         this.parameters = this.states.map(state => JSON.parse(state.get_parameters()))
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         return diff
@@ -97,6 +98,10 @@ export class L2F{
         })
     }
 
+    update_render_state(){
+        this.render_states =  this.states.map(state => JSON.parse(state.get_state()))
+        this.render_actions = this.states.map(state => JSON.parse(state.get_action()))
+    }
     async control(){
         const now = performance.now()
         if(!this.pause && (this.last_step === null || (now - this.last_step) / 1000 > this.last_dt / this.speed)){
@@ -108,6 +113,7 @@ export class L2F{
             }
             this.last_step = now
             this.simulate_step()
+            this.update_render_state()
         }
         this.control_tick += 1
     }
@@ -115,9 +121,9 @@ export class L2F{
         if(this.DEBUG){
             this.stats.begin()
         }
-        const current_states =  this.states.map(state => JSON.parse(state.get_state()))
-        const current_actions = this.states.map(state => JSON.parse(state.get_action()))
-        await this.ui.render_multi(this.ui_state, this.parameters, current_states, current_actions)
+        if(this.render_states && this.render_actions){
+            await this.ui.render_multi(this.ui_state, this.parameters, this.render_states, this.render_actions)
+        }
         if(this.DEBUG){
             this.stats.end()
         }
