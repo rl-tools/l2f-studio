@@ -129,13 +129,13 @@
     </script>
     <script type="module">
         import {L2F} from "./l2f.js"
-        import * as rlt from "/static/RLtools.js/rl_tools.js"
+        import * as rlt from "./blob/rl_tools.js"
         import * as math from 'https://esm.sh/mathjs'
 
         // check url for "file" parameter
         const urlParams = new URLSearchParams(window.location.search);
         const file = urlParams.get('file');
-        const file_url = file ? file : "/experiments/2025-02-27_15-27-17/27f2f12_zoo_environment_algorithm/l2f_sac/0000/steps/000000001000000/checkpoint.h5"
+        const file_url = file ? file : "./blob/checkpoint.h5"
         function mean(a){
             return a.reduce((sum, val) => sum + val, 0) / a.length
         }
