@@ -5,6 +5,15 @@ const DEBUG = false
 
 import Stats from 'https://esm.sh/stats.js'
 
+function mean(a){
+    return a.reduce((sum, val) => sum + val, 0) / a.length
+}
+function std(x){
+    const sample_mean = mean(x)
+    const variance = x.reduce((sum, val) => sum + (val - sample_mean) ** 2, 0)
+    return variance > 0 ?  Math.sqrt(variance / x.length) : 0;
+}
+
 export class L2F{
     constructor(parent, num_quadrotors, policy, seed){
 
@@ -26,7 +35,7 @@ export class L2F{
             document.body.appendChild(this.stats.dom);
         }
 
-        this.overtimes = []
+        this.ticks = []
         this.control_tick = 0
 
         this.pause = false
@@ -68,10 +77,11 @@ export class L2F{
             await this.ui.episode_init_multi(this.ui_state, this.parameters)
 
             this.render()
-            setInterval(this.control.bind(this), 0)
+            this.real_time_factor = null
+            this.control_timer = null
+            this.control()
         });
-        this.last_step = null
-        this.last_dt = 0
+        this.dt = null
     }
     async change_num_quadrotors(num){
         const diff = num - this.states.length
@@ -87,46 +97,74 @@ export class L2F{
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         return diff
     }
+    update_render_state(){
+        this.render_states =  this.states.map(state => JSON.parse(state.get_state()))
+        this.render_actions = this.states.map(state => JSON.parse(state.get_action()))
+    }
     simulate_step(){
+        let dts = []
         this.states.forEach(state => {
             const action = this.policy(state)
             console.assert(action.length === state.action_dim, "Action dimension mismatch")
             action.map((v, i) => {
                 state.set_action(i, v)
             })
-            this.last_dt = state.step()
+            const dt = state.step()
+            dts.push(dt)
         })
+        this.update_render_state()
+        if(this.DEBUG){
+            console.assert(!dts.some(dt => dt !== dts[0]), "dt mismatch")
+        }
+        return dts[0]
     }
 
-    update_render_state(){
-        this.render_states =  this.states.map(state => JSON.parse(state.get_state()))
-        this.render_actions = this.states.map(state => JSON.parse(state.get_action()))
-    }
     async control(){
         const now = performance.now()
-        if(!this.pause && (this.last_step === null || (now - this.last_step) / 1000 > this.last_dt / this.speed)){
-            const overtime = (now - this.last_step) / 1000 - this.last_dt / this.speed
-            this.overtimes.push(overtime)
-            this.overtimes = this.overtimes.slice(-10)
-            if(this.control_tick % 100 === 0){
-                // console.log(`Average overtime: ${this.overtimes.reduce((a, b) => a + b, 0) / this.overtimes.length}`)
+        if(!this.pause){
+            this.ticks.push(now)
+            const real_time_factor_interval = Math.floor(100 * this.current_speed)
+            this.ticks = this.ticks.slice(-real_time_factor_interval)
+            if(this.control_tick % real_time_factor_interval === 0){
+                if(this.dt !== null && this.ticks.length === real_time_factor_interval){
+                    this.real_time_factor = this.dt / (mean(this.ticks.slice(1).map((tick, i) => tick - this.ticks[i])) / 1000)
+                }
             }
-            this.last_step = now
-            this.simulate_step()
-            this.update_render_state()
+            const dt = this.simulate_step()
+            if(this.DEBUG && this.dt !== null && this.dt !== dt){
+                console.error(`dt mismatch: ${this.dt} != ${dt}`)
+            }
+            this.dt = dt
+            if(this.control_timer === null || this.speed !== this.current_speed){
+                this.current_speed = this.speed
+                if(this.control_timer !== null){
+                    clearInterval(this.control_timer)
+                }
+                this.control_timer = setInterval(this.control.bind(this), this.dt / this.speed * 1000)
+            }
+            if(this.request_pause){
+                this.pause = true
+                this.request_pause = false
+            }
+            this.control_tick += 1
         }
-        this.control_tick += 1
+        if(this.request_unpause){
+            this.pause = false
+            this.request_unpause = false
+            this.last_step = performance.now()
+            this.ticks = []
+        }
     }
     async render(){
         if(this.DEBUG){
             this.stats.begin()
         }
         if(this.render_states && this.render_actions){
-            await this.ui.render_multi(this.ui_state, this.parameters, this.render_states, this.render_actions)
+            this.ui.render_multi(this.ui_state, this.parameters, this.render_states, this.render_actions)
         }
+        requestAnimationFrame(() => this.render());
         if(this.DEBUG){
             this.stats.end()
         }
-        requestAnimationFrame(() => this.render());
     }
 }

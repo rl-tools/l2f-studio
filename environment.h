@@ -94,7 +94,7 @@ namespace builder{
     }; // DomainRandomization
 
     struct ENVIRONMENT_STATIC_PARAMETERS{
-        static constexpr TI N_SUBSTEPS = 1;
+        static constexpr TI N_SUBSTEPS = 10;
         static constexpr TI ACTION_HISTORY_LENGTH = 16;
         static constexpr TI EPISODE_STEP_LIMIT = 5 * SIMULATION_FREQUENCY;
         static constexpr TI CLOSED_FORM = false;

@@ -167,10 +167,31 @@
             if(model === null){
                 model = await rlt.load(file_url)
             }
+            const policy_state = {
+                "step": 0
+            }
+            function lissajous(t){
+                const scale = 0.5
+                const duration = 10
+                const A = 1
+                const B = 0.5
+                const progress = t * 2 * Math.PI / duration
+                const d_progress = 2 * Math.PI / duration
+                const x = scale * Math.sin(A * progress)
+                const y = scale * Math.sin(B * progress)
+                const vx = scale * Math.cos(A * progress) * A * d_progress
+                const vy = scale * Math.cos(B * progress) * B * d_progress
+                return [x, y, 0, vx, vy, 0]
+            }
             function policy(state){
                 state.observe()
                 const input = math.matrix([[[...Array(state.observation_dim).keys()].map(i => state.get_observation(i))]])
+                const input_offset = lissajous(policy_state.step / 100)
+                input_offset.forEach((x, i) => {
+                    input._data[0][0][i] = input._data[0][0][i] - x
+                })
                 const output = model.evaluate(input)
+                policy_state.step += 1
                 return output.valueOf()[0][0]
             }
             const sim_container = document.getElementById("sim-container")
@@ -233,6 +254,7 @@
 
             const speed_slider = document.getElementById("speed-slider")
             const speed_info = document.getElementById("speed-info")
+            const speed_info_real = document.getElementById("speed-info-real")
             speed_slider.addEventListener("input", () => {
                 const normalized_value = parseFloat(speed_slider.value)
                 const range = 9;
@@ -240,6 +262,15 @@
                 l2f.speed = normalized_value > 0.5 ? factor : 1 / factor
                 speed_info.innerText = `Speed: ${normalized_value > 0.5 ? factor.toFixed(1) : (normalized_value === 0.5 ? "1" : `1/${factor.toFixed(1)}`)}x`
             })
+            setInterval(() => {
+                const f = l2f.real_time_factor
+                if(f){
+                    speed_info_real.innerText = `Real: ${f > 1 ? f.toFixed(1) : `1/${(1/f).toFixed(1)}`}x`
+                }
+                else{
+                    speed_info_real.innerText = `Real: -`
+                }
+            }, 100)
 
             const show_axes_checkbox = document.getElementById("show-axes")
             show_axes_checkbox.addEventListener("change", () => {
@@ -255,7 +286,7 @@
                 l2f.states.forEach(state => {
                     if(pause_on_reset_checkbox.checked && pause_button.innerText === "Pause"){
                         pause_button.innerText = "Resume"
-                        l2f.pause = true
+                        l2f.request_pause = true
                     }
                     state.sample_initial_state()
                 })
@@ -264,18 +295,18 @@
             pause_button.addEventListener("click", () => {
                 if(pause_button.innerText === "Pause"){
                     pause_button.innerText = "Resume"
-                    l2f.pause = true
+                    l2f.request_pause = true
                 }
                 else{
                     pause_button.innerText = "Pause"
-                    l2f.pause = false
+                    l2f.request_unpause = true
                 }
             })
             const step_button = document.getElementById("step")
             step_button.addEventListener("click", () => {
                 if(pause_button.innerText === "Pause"){
                     pause_button.innerText = "Resume"
-                    l2f.pause = true
+                    l2f.request_pause = true
                 }
                 l2f.simulate_step()
             })
@@ -551,6 +582,7 @@
             <span class="slider-container">
                 <div>
                     <span class="control-container-label" id="speed-info">Speed: 1x</span>
+                    <span class="control-container-label" id="speed-info-real">Real: -</span>
                 </div>
                 <div>
                     <input type="range" id="speed-slider" min="0" max="1" step="0.05" value="0.5">
