@@ -184,10 +184,13 @@
                 const vy = scale * Math.cos(B * progress) * B * d_progress
                 return [x, y, 0, vx, vy, 0]
             }
+            function default_trajectory(t){
+                return [0, 0, 0, 0, 0, 0]
+            }
             function policy(state){
                 state.observe()
                 const input = math.matrix([[[...Array(state.observation_dim).keys()].map(i => state.get_observation(i))]])
-                const input_offset = lissajous(policy_state.step / 100)
+                const input_offset = default_trajectory(policy_state.step / 100)
                 input_offset.forEach((x, i) => {
                     input._data[0][0][i] = input._data[0][0][i] - x
                 })
@@ -219,16 +222,28 @@
                     instructions = {}
                     instructions[path] = new_value
                 }
+                const additional_instructions = {}
                 for(const [path_string, value] of Object.entries(instructions)){
+                    const check_path = "parameters.dynamics.J"
+                    if(path_string.startsWith(check_path)){
+                        const values = Array.isArray(value) ? value.map(x => 1/x) : 1/value
+                        additional_instructions["parameters.dynamics.J_inv" + path_string.slice(check_path.length)] = values
+                    }
+                }
+                const combined_instructions = {...instructions, ...additional_instructions}
+                // Object.entries(additional_instructions).forEach(([path_string, value]) => {
+                //     instructions[path_string] = value
+                // })
+                for(const [path_string, value] of Object.entries(combined_instructions)){
                     const path = path_string.split('.')
                     const last_key = path.pop()
                     const target_objs = path.reduce((acc, key) => acc.map(x => x[key]), objs)
                     target_objs.forEach((obj, i) => {
-                        if(Array.isArray(new_value)){
-                            obj[last_key] = new_value[i]
+                        if(Array.isArray(value)){
+                            obj[last_key] = value[i]
                         }
                         else{
-                            obj[last_key] = new_value
+                            obj[last_key] = value 
                         }
                     })
                 }
@@ -614,7 +629,7 @@
                     <input id="perturbation-id-max" class="perturbation-id-minmax" type="text" disabled></input>
                     ⬆️
                     <span style="margin-left: 5px;">Transform:</span>
-                    <input id="perturbation-transform" type="text" value="(id, o, p, x) => o/2 + p*o/20 * id" title="id = id of the quadrotor, o = original value, p = percentage of the slider, x resulting value: slider => range"></input>
+                    <input id="perturbation-transform" type="text" value="(id, o, p, x) => o/2 + p*o/20 * id" title="id = id of the quadrotor, o = original value, p = percentage of the slider, x: resulting value {slider x range}"></input>
                 </div>
             </span>
         </div>
