@@ -137,7 +137,10 @@
     <script type="importmap">
         {
             "imports": {
-                "three": "./lib/three.module.js",
+                "three": "./lib/three.js",
+                "mathjs": "./lib/math.js",
+                "stats.js": "./lib/dependencies.js",
+                "jsfive": "./lib/jsfive.js",
                 "three-orbitcontrols": "./lib/OrbitControls.js",
                 "l2f-interface": "./blob/l2f-interface.js"
             }
@@ -145,9 +148,8 @@
     </script>
     <script type="module">
         import {L2F} from "./l2f.js"
-        // import * as rlt from "/static/RLtools.js/rl_tools.js"
         import * as rlt from "./blob/rl_tools.js"
-        import * as math from 'https://esm.sh/mathjs'
+        import * as math from "mathjs"
 
         // check url for "file" parameter
         const urlParams = new URLSearchParams(window.location.search);

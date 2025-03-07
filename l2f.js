@@ -3,7 +3,7 @@ import createModule from "l2f-interface";
 // const DEBUG = true
 const DEBUG = false
 
-import Stats from 'https://esm.sh/stats.js'
+import Stats from 'stats.js'
 
 function mean(a){
     return a.reduce((sum, val) => sum + val, 0) / a.length
