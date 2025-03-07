@@ -98,12 +98,13 @@ namespace builder{
         static constexpr TI ACTION_HISTORY_LENGTH = 16;
         static constexpr TI EPISODE_STEP_LIMIT = 5 * SIMULATION_FREQUENCY;
         static constexpr TI CLOSED_FORM = false;
-        using STATE_BASE = StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>;
+        static constexpr TI ANGULAR_VELOCITY_DELAY = 1;
+        using STATE_BASE = StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_DELAY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>;
         using STATE_TYPE = StateRotorsHistory<StateRotorsHistorySpecification<T, TI, ACTION_HISTORY_LENGTH, CLOSED_FORM, StateRandomForce<StateSpecification<T, TI, STATE_BASE>>>>;
         using OBSERVATION_TYPE = observation::Position<observation::PositionSpecification<T, TI,
                 observation::OrientationRotationMatrix<observation::OrientationRotationMatrixSpecification<T, TI,
                 observation::LinearVelocity<observation::LinearVelocitySpecification<T, TI,
-                observation::AngularVelocity<observation::AngularVelocitySpecification<T, TI,
+                observation::AngularVelocityDelayed<observation::AngularVelocityDelayedSpecification<T, TI,
                 observation::ActionHistory<observation::ActionHistorySpecification<T, TI, ACTION_HISTORY_LENGTH>>
         >>>>>>>>;
         using OBSERVATION_TYPE_PRIVILEGED = OBSERVATION_TYPE;
