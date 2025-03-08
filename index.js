@@ -1,5 +1,5 @@
 import {L2F} from "./l2f.js"
-import * as rlt from "./blob/rl_tools.js"
+import * as rlt from "./lib/rltools.js"
 import * as math from "mathjs"
 
 // check url for "file" parameter
