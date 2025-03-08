@@ -1,0 +1,106 @@
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    background-color: black;
+    overflow: hidden;
+}
+#sim-container {
+    flex-grow: 1;
+    background-color: white;
+    width: 100%;
+    min-height: 0;
+}
+.controls-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background-color: darkgrey;
+    width: 100%;
+    padding: 10px;
+}
+.slider-container > div{
+    text-align: center;
+}
+.control-container-label{
+    /*display: inline-block;*/
+    /*width: 7em;*/
+    width: 100%;
+    text-align: center;
+}
+#num-vehicles[type="number"] {
+    width: 80px;
+    text-align: center;
+}
+button{
+    padding: 10px 20px;
+    font-size: 16px;
+}
+#perturbation-id-input{
+    width: 25em;
+}
+.perturbation-group{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+}
+#perturbation-id-suggestion{
+    text-align: left;
+    display: inline-block;
+}
+.perturbation-id-minmax{
+    width: 5em;
+    text-align: center;
+}
+#perturbation-transform{
+    text-align: center;
+    width: 20em;
+}
+.perturbation-group-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.perturbation-group-item-path {
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.perturbation-group-item-range {
+    font-family: monospace;
+    text-align: center;
+    overflow: hidden;
+}
+
+.perturbation-group-item-value {
+    font-family: monospace;
+    color: #e63946;
+    text-align: center;
+    overflow: hidden;
+}
+#drag-and-drop-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    font-family: sans-serif;
+    z-index: 1000;
+    font-size: 40px;
+}
+canvas{
+    overflow: hidden;
+}
