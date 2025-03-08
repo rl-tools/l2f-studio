@@ -36,8 +36,9 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Download dependencies
-        run: |
-          ./download_dependencies.sh
+        run: npm ci
+      - name: Build
+        run: ./bundle.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
