@@ -29,6 +29,15 @@ function base64ToArrayBuffer(base64) {
     }
     return bytes.buffer; // Return the ArrayBuffer
 }
+
+function showStatus(message, isError = false) {
+    const status = document.getElementById('status');
+    status.textContent = message;
+    status.style.display = 'block';
+    status.className = `status ${isError ? 'error' : 'success'}`;
+    setTimeout(() => status.style.display = 'none', 3000);
+}
+
 async function main(){
     const seed = 12
     if(model === null){
@@ -43,6 +52,7 @@ async function main(){
             localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
         }
         model = await rlt.load(checkpoint)
+        document.getElementById("checkpoint-name").textContent = model.checkpoint_name
     }
     const policy_state = {
         "step": 0
@@ -114,9 +124,13 @@ document.body.addEventListener('drop', e => {
         const reader = new FileReader();
         reader.onload = function(e) {
             const array_buffer = e.target.result;
+            localStorage.setItem("checkpoint", arrayBufferToBase64(array_buffer))
             model = rlt.load(array_buffer)
-            console.log("loaded model: ", model)
+            document.getElementById("checkpoint-name").textContent = model.checkpoint_name
+            console.log("loaded model: ", model.checkpoint_name)
+            showStatus(`Loaded model: ${model.checkpoint_name}`);
         };
         reader.readAsArrayBuffer(file);
     }
 }, false);
+

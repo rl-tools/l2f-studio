@@ -2,7 +2,7 @@
   "dependencies": {
     "jsfive": "^0.4.0",
     "mathjs": "^14.3.1",
-    "rltools": "^0.0.3",
+    "rltools": "file:../rltools.js",
     "stats.js": "^0.17.0",
     "three": "^0.156.0"
   },

@@ -12,14 +12,17 @@ body {
     width: 100%;
     min-height: 0;
 }
+#controls-box{
+    background-color: #c5c5c5;
+    padding: 5px;
+}
 .controls-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 20px;
-    background-color: darkgrey;
+    gap: 10px;
     width: 100%;
-    padding: 10px;
+    margin: 8px;
 }
 .slider-container > div{
     text-align: center;
@@ -103,4 +106,25 @@ button{
 }
 canvas{
     overflow: hidden;
+}
+
+.status {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    display: none;
+}
+.status.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+.status.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
