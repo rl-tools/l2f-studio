@@ -10,10 +10,39 @@ const file = urlParams.get('file');
 const file_url = file ? file : "./blob/checkpoint.h5"
 
 let model = null
+
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary); // Base64 encode the binary string
+}
+
+function base64ToArrayBuffer(base64) {
+    const binary = atob(base64); // Decode Base64 to binary string
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer; // Return the ArrayBuffer
+}
 async function main(){
     const seed = 12
     if(model === null){
-        model = await rlt.load(file_url)
+        let checkpoint = null
+        if(localStorage.getItem("checkpoint") !== null){
+            console.log("loading checkpoint from local storage")
+            checkpoint = base64ToArrayBuffer(localStorage.getItem("checkpoint"))
+        }
+        else{
+            console.log(`Loading checkpoint from ${file_url}`)
+            checkpoint = await (await fetch(file_url)).arrayBuffer()
+            localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
+        }
+        model = await rlt.load(checkpoint)
     }
     const policy_state = {
         "step": 0
