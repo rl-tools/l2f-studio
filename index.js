@@ -53,6 +53,8 @@ async function main(){
         }
         model = await rlt.load(checkpoint)
         document.getElementById("checkpoint-name").textContent = model.checkpoint_name
+        document.getElementById("observations").textContent = model.meta.environment.observation.split(".").join(", ")
+        document.getElementById("observations").title = model.meta.environment.observation.split(".").join(", ")
     }
     const policy_state = {
         "step": 0
@@ -74,24 +76,31 @@ async function main(){
         return [0, 0, 0, 0, 0, 0]
     }
     function policy(state){
-        const observation_select = document.getElementById("observation-select")
-        let input = null;
-        if(observation_select.value === "action-history") {
-            state.observe()
-            input = math.matrix([[[...Array(model.input_shape[2]).keys()].map(i => state.get_observation(i))]])
-        }
-        else{
-            if(observation_select.value === "motor-states"){
-                state.observe()
-                const input_base = [...Array(model.input_shape[2]-4).keys()].map(i => state.get_observation(i))
-                const parameters = JSON.parse(state.get_parameters())
-                const min_action = parameters.dynamics.action_limit.min
-                const max_action = parameters.dynamics.action_limit.max
-                const motor_states = JSON.parse(state.get_state())["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
-                input = math.matrix([[[...input_base, ...motor_states]]])
-
+        state.observe()
+        const full_observation = [...Array(state.observation_dim).keys()].map(i => state.get_observation(i))
+        console.assert(full_observation.length > 18, "Observation is smaller than base observation")
+        const get_obs = (obs) => {
+            switch(true){
+                case obs === "Position":
+                    return full_observation.slice(0, 3)
+                case obs === "OrientationRotationMatrix":
+                    return full_observation.slice(3, 12)
+                case obs === "LinearVelocity":
+                    return full_observation.slice(12, 15)
+                case obs === "AngularVelocity":
+                    return full_observation.slice(15, 18)
+                case obs.startsWith("ActionHistory"):
+                    const history_length_string = obs.split("(")[1].split(")")[0]
+                    const history_length = parseInt(history_length_string)
+                    return full_observation.slice(18, 18 + history_length * 4)
+                case obs === "RotorSpeeds":
+                    const parameters = JSON.parse(state.get_parameters())
+                    const min_action = parameters.dynamics.action_limit.min
+                    const max_action = parameters.dynamics.action_limit.max
+                    return JSON.parse(state.get_state())["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
             }
         }
+        let input = math.matrix([[model.meta.environment.observation.split(".").map(x => get_obs(x)).flat()]])
         const input_offset = default_trajectory(policy_state.step / 100)
         input_offset.forEach((x, i) => {
             input._data[0][0][i] = input._data[0][0][i] - x
@@ -143,6 +152,8 @@ document.body.addEventListener('drop', e => {
             localStorage.setItem("checkpoint", arrayBufferToBase64(array_buffer))
             model = rlt.load(array_buffer)
             document.getElementById("checkpoint-name").textContent = model.checkpoint_name
+            document.getElementById("observations").textContent = model.meta.environment.observation.split(".").join(", ")
+            document.getElementById("observations").title = model.meta.environment.observation.split(".").join(", ")
             console.log("loaded model: ", model.checkpoint_name)
             showStatus(`Loaded model: ${model.checkpoint_name}`);
         };
