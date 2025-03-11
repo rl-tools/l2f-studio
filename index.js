@@ -74,8 +74,24 @@ async function main(){
         return [0, 0, 0, 0, 0, 0]
     }
     function policy(state){
-        state.observe()
-        const input = math.matrix([[[...Array(model.input_shape[2]).keys()].map(i => state.get_observation(i))]])
+        const observation_select = document.getElementById("observation-select")
+        let input = null;
+        if(observation_select.value === "action-history") {
+            state.observe()
+            input = math.matrix([[[...Array(model.input_shape[2]).keys()].map(i => state.get_observation(i))]])
+        }
+        else{
+            if(observation_select.value === "motor-states"){
+                state.observe()
+                const input_base = [...Array(model.input_shape[2]-4).keys()].map(i => state.get_observation(i))
+                const parameters = JSON.parse(state.get_parameters())
+                const min_action = parameters.dynamics.action_limit.min
+                const max_action = parameters.dynamics.action_limit.max
+                const motor_states = JSON.parse(state.get_state())["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
+                input = math.matrix([[[...input_base, ...motor_states]]])
+
+            }
+        }
         const input_offset = default_trajectory(policy_state.step / 100)
         input_offset.forEach((x, i) => {
             input._data[0][0][i] = input._data[0][0][i] - x

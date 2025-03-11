@@ -42,11 +42,11 @@ namespace builder{
     };
     static constexpr typename PARAMETERS_TYPE::MDP::Initialization init = parameters::init::init_90_deg<PARAMETERS_SPEC>;
     static constexpr typename PARAMETERS_TYPE::MDP::ObservationNoise observation_noise = {
-        0.01,// position
-        0.01, // orientation
-        0.01, // linear_velocity
-        0.01, // angular_velocity
-        0.01, // imu acceleration
+        0.00,// position
+        0.00, // orientation
+        0.00, // linear_velocity
+        0.00, // angular_velocity
+        0.00, // imu acceleration
     };
     static constexpr typename PARAMETERS_TYPE::MDP::ActionNoise action_noise = {
         0, // std of additive gaussian noise onto the normalized action (-1, 1)
