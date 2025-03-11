@@ -105,7 +105,8 @@ namespace builder{
         using OBSERVATION_TYPE = observation::Position<observation::PositionSpecification<T, TI,
                 observation::OrientationRotationMatrix<observation::OrientationRotationMatrixSpecification<T, TI,
                 observation::LinearVelocity<observation::LinearVelocitySpecification<T, TI,
-                observation::AngularVelocityDelayed<observation::AngularVelocityDelayedSpecification<T, TI,
+                observation::AngularVelocity<observation::AngularVelocitySpecification<T, TI,
+//                observation::AngularVelocityDelayed<observation::AngularVelocityDelayedSpecification<T, TI,
                 observation::ActionHistory<observation::ActionHistorySpecification<T, TI, ACTION_HISTORY_LENGTH>>
         >>>>>>>>;
         using OBSERVATION_TYPE_PRIVILEGED = OBSERVATION_TYPE;
