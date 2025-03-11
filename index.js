@@ -75,7 +75,7 @@ async function main(){
     }
     function policy(state){
         state.observe()
-        const input = math.matrix([[[...Array(state.observation_dim).keys()].map(i => state.get_observation(i))]])
+        const input = math.matrix([[[...Array(model.input_shape[2]).keys()].map(i => state.get_observation(i))]])
         const input_offset = default_trajectory(policy_state.step / 100)
         input_offset.forEach((x, i) => {
             input._data[0][0][i] = input._data[0][0][i] - x

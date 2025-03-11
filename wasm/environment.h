@@ -42,11 +42,11 @@ namespace builder{
     };
     static constexpr typename PARAMETERS_TYPE::MDP::Initialization init = parameters::init::init_90_deg<PARAMETERS_SPEC>;
     static constexpr typename PARAMETERS_TYPE::MDP::ObservationNoise observation_noise = {
-        0.00,// position
-        0.00, // orientation
-        0.00, // linear_velocity
-        0.00, // angular_velocity
-        0.00, // imu acceleration
+        0.01,// position
+        0.01, // orientation
+        0.01, // linear_velocity
+        0.01, // angular_velocity
+        0.01, // imu acceleration
     };
     static constexpr typename PARAMETERS_TYPE::MDP::ActionNoise action_noise = {
         0, // std of additive gaussian noise onto the normalized action (-1, 1)
@@ -95,11 +95,12 @@ namespace builder{
 
     struct ENVIRONMENT_STATIC_PARAMETERS{
         static constexpr TI N_SUBSTEPS = 10;
-        static constexpr TI ACTION_HISTORY_LENGTH = 16;
+        static constexpr TI ACTION_HISTORY_LENGTH = 64;
         static constexpr TI EPISODE_STEP_LIMIT = 5 * SIMULATION_FREQUENCY;
         static constexpr TI CLOSED_FORM = false;
-        static constexpr TI ANGULAR_VELOCITY_DELAY = 1;
-        using STATE_BASE = StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_DELAY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>;
+//        static constexpr TI ANGULAR_VELOCITY_DELAY = 1;
+//        using STATE_BASE = StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_DELAY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>;
+        using STATE_BASE = StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>;
         using STATE_TYPE = StateRotorsHistory<StateRotorsHistorySpecification<T, TI, ACTION_HISTORY_LENGTH, CLOSED_FORM, StateRandomForce<StateSpecification<T, TI, STATE_BASE>>>>;
         using OBSERVATION_TYPE = observation::Position<observation::PositionSpecification<T, TI,
                 observation::OrientationRotationMatrix<observation::OrientationRotationMatrixSpecification<T, TI,
