@@ -38,7 +38,19 @@ function showStatus(message, isError = false) {
     setTimeout(() => status.style.display = 'none', 3000);
 }
 
+async function load_model(checkpoint){
+    const model = await rlt.load(checkpoint)
+    document.getElementById("checkpoint-name").textContent = model.checkpoint_name
+    document.getElementById("observations").textContent = model.meta.environment.observation.split(".").join(", ")
+    document.getElementById("observations").title = model.meta.environment.observation.split(".").join(", ")
+    return model
+}
+
 async function main(){
+    document.getElementById("default-checkpoint-btn").addEventListener("click", async () => {
+        model = await load_model(file_url)
+    })
+
     const seed = 12
     if(model === null){
         let checkpoint = null
@@ -51,10 +63,7 @@ async function main(){
             checkpoint = await (await fetch(file_url)).arrayBuffer()
             localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
         }
-        model = await rlt.load(checkpoint)
-        document.getElementById("checkpoint-name").textContent = model.checkpoint_name
-        document.getElementById("observations").textContent = model.meta.environment.observation.split(".").join(", ")
-        document.getElementById("observations").title = model.meta.environment.observation.split(".").join(", ")
+        model = await load_model(checkpoint)
     }
     const policy_state = {
         "step": 0
@@ -147,13 +156,10 @@ document.body.addEventListener('drop', e => {
     const file = e.dataTransfer.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             const array_buffer = e.target.result;
             localStorage.setItem("checkpoint", arrayBufferToBase64(array_buffer))
-            model = rlt.load(array_buffer)
-            document.getElementById("checkpoint-name").textContent = model.checkpoint_name
-            document.getElementById("observations").textContent = model.meta.environment.observation.split(".").join(", ")
-            document.getElementById("observations").title = model.meta.environment.observation.split(".").join(", ")
+            model = await load_model(array_buffer)
             console.log("loaded model: ", model.checkpoint_name)
             showStatus(`Loaded model: ${model.checkpoint_name}`);
         };
