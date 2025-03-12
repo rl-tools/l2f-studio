@@ -130,6 +130,9 @@ async function main(){
                     const min_action = parameters.dynamics.action_limit.min
                     const max_action = parameters.dynamics.action_limit.max
                     return get_state()["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
+                default:
+                    console.error("Unknown observation: ", obs)
+                    return null
             }
         }
         const observation_description = document.getElementById("observations").observation
