@@ -1,5 +1,6 @@
 export class SimControls{
-    constructor(l2f){
+    constructor(l2f, policy){
+        this.policy = policy
         const num_vehicles_input = document.getElementById("num-vehicles")
         num_vehicles_input.addEventListener("input", async () => {
             const diff = await l2f.change_num_quadrotors(parseInt(num_vehicles_input.value))
@@ -55,6 +56,7 @@ export class SimControls{
                 }
                 state.sample_initial_state()
             })
+            this.policy.reset()
         })
         const pause_button = document.getElementById("pause")
         pause_button.addEventListener("click", () => {

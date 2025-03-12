@@ -104,7 +104,7 @@ export class L2F{
     simulate_step(){
         let dts = []
         this.states.forEach(state => {
-            const action = this.policy(state)
+            const action = this.policy.evaluate_step(state)
             console.assert(action.length === state.action_dim, "Action dimension mismatch")
             action.map((v, i) => {
                 state.set_action(i, v)
