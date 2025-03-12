@@ -39,6 +39,10 @@ function showStatus(message, isError = false) {
 }
 
 async function load_model(checkpoint){
+    if(typeof checkpoint === "string"){
+        checkpoint = await (await fetch(checkpoint)).arrayBuffer()
+    }
+    localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
     const model = await rlt.load(checkpoint)
     document.getElementById("checkpoint-name").textContent = model.checkpoint_name
     document.getElementById("observations").value = model.meta.environment.observation
