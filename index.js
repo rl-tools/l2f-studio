@@ -41,14 +41,20 @@ function showStatus(message, isError = false) {
 async function load_model(checkpoint){
     const model = await rlt.load(checkpoint)
     document.getElementById("checkpoint-name").textContent = model.checkpoint_name
-    document.getElementById("observations").textContent = model.meta.environment.observation.split(".").join(", ")
-    document.getElementById("observations").title = model.meta.environment.observation.split(".").join(", ")
+    document.getElementById("observations").value = model.meta.environment.observation
+    document.getElementById("observations").observation = model.meta.environment.observation
     return model
 }
 
 async function main(){
     document.getElementById("default-checkpoint-btn").addEventListener("click", async () => {
         model = await load_model(file_url)
+    })
+    document.getElementById("observations").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            document.getElementById("observations").observation  = document.getElementById("observations").value
+        }
     })
 
     const seed = 12
@@ -89,6 +95,13 @@ async function main(){
         const full_observation = [...Array(state.observation_dim).keys()].map(i => state.get_observation(i))
         console.assert(full_observation.length > 18, "Observation is smaller than base observation")
         const get_obs = (obs) => {
+            let vehicle_state = null
+            const get_state = () => {
+                if(vehicle_state === null){
+                    vehicle_state = JSON.parse(state.get_state())
+                }
+                return vehicle_state
+            }
             switch(true){
                 case obs === "Position":
                     return full_observation.slice(0, 3)
@@ -98,6 +111,16 @@ async function main(){
                     return full_observation.slice(12, 15)
                 case obs === "AngularVelocity":
                     return full_observation.slice(15, 18)
+                case obs.startsWith("AngularVelocityDelayed"):
+                    const delay_string = obs.split("(")[1].split(")")[0]
+                    const delay = parseInt(delay_string)
+                    if(delay === 0){
+                        return full_observation.slice(15, 18)
+                    }
+                    else{
+                        const s = get_state()
+                        return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
+                    }
                 case obs.startsWith("ActionHistory"):
                     const history_length_string = obs.split("(")[1].split(")")[0]
                     const history_length = parseInt(history_length_string)
@@ -106,10 +129,11 @@ async function main(){
                     const parameters = JSON.parse(state.get_parameters())
                     const min_action = parameters.dynamics.action_limit.min
                     const max_action = parameters.dynamics.action_limit.max
-                    return JSON.parse(state.get_state())["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
+                    return get_state()["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
             }
         }
-        let input = math.matrix([[model.meta.environment.observation.split(".").map(x => get_obs(x)).flat()]])
+        const observation_description = document.getElementById("observations").observation
+        let input = math.matrix([[observation_description.split(".").map(x => get_obs(x)).flat()]])
         const input_offset = default_trajectory(policy_state.step / 100)
         input_offset.forEach((x, i) => {
             input._data[0][0][i] = input._data[0][0][i] - x

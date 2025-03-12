@@ -136,7 +136,9 @@ canvas{
     word-break: break-all;
 }
 #observations{
-    max-width: 100px;
+    font-family: monospace;
+    font-size: 80%;
+    width: 60em;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
