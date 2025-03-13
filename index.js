@@ -45,7 +45,9 @@ async function load_model(checkpoint){
     }
     localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
     const model = await rlt.load(checkpoint)
-    document.getElementById("checkpoint-name").textContent = model.checkpoint_name
+    const checkpoint_span = document.getElementById("checkpoint-name")
+    checkpoint_span.textContent = model.checkpoint_name
+    checkpoint_span.title = model.description()
     document.getElementById("observations").value = model.meta.environment.observation
     document.getElementById("observations").observation = model.meta.environment.observation
     return model
