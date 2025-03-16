@@ -70,9 +70,6 @@ export class L2F{
                 URL.revokeObjectURL(url);
             }
             this.ui_state = await this.ui.init(this.canvas, {devicePixelRatio: window.devicePixelRatio})
-            if(this.ui_state.cursor_grab){
-                this.canvas.style.cursor = "grab"
-            }
             parent.appendChild(this.canvas);
             await this.ui.episode_init_multi(this.ui_state, this.parameters)
 

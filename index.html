@@ -49,15 +49,35 @@
     <div id="status"></div>
     <div id="sim-container"></div>
     <div id="controls-box">
-        <div class="controls-container">
-            <span>Checkpoint:</span>
-            <span id="checkpoint-name">default</span>
-            <button id="default-checkpoint-btn">Default</button>
-        </div>
-        <div class="controls-container">
-            <span>Observations:</span>
-            <input type="text" id="observations">
-            </input>
+        <div id="controller-options-container">
+            <div id="controller-selector-container">
+                <form id="controller-selector-form">
+                    <label>
+                        <input type="radio" name="choice" value="policy" checked>
+                        Policy
+                    </label>
+                    <label>
+                        <input type="radio" name="choice" value="controller">
+                        Controller
+                    </label>
+                </form>
+            </div>
+            <div id="policy-container" class="controller-container">
+                <span class="policy-container-item">Checkpoint:</span>
+                <div class="policy-container-item">
+                    <span id="checkpoint-name">default</span>
+                    <button id="default-checkpoint-btn">Default</button>
+                </div>
+                <span class="policy-container-item">Observations:</span>
+                <div class="policy-container-item">
+                    <input type="text" id="observations">
+                    </input>
+                </div>
+            </div>
+            <div id="controller-container" class="controller-container">
+                <textarea id="controller-code" rows=10 value="(x, u) => x.map((v, i) => v + u[i] * 0.1)"></textarea>
+            </div>
+
         </div>
         <div class="controls-container">
             <span class="slider-container">
