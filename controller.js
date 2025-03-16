@@ -1,4 +1,4 @@
-import { vec3, vec4, mat4, quat } from 'https://esm.sh/gl-matrix';
+import { vec3, mat3, vec4, mat4, quat } from 'https://esm.sh/gl-matrix';
 
 export default class Controller {
     constructor() { }
@@ -23,13 +23,11 @@ export default class Controller {
         const k_q = params['dynamics']['rotor_torque_constants'][0];
         const [a, b, c] = params['dynamics']['rotor_thrust_coefficients'][0];
 
-        // Gains
         const k_p = 3.0;
         const k_d = 2.0;
         const k_R = 1.0;
         const k_omega = 0.1;
 
-        // Desired states
         const p_des = vec3.fromValues(0, 0, 0);
         const v_des = vec3.fromValues(0, 0, 0);
         const q_des = quat.fromValues(0, 0, 0, 1);
@@ -55,11 +53,23 @@ export default class Controller {
         const A_inv = mat4.invert(mat4.create(), A);
 
         const T = vec3.dot(F_des, vec3.transformQuat(vec3.create(), [0, 0, 1], q));
-        const tau = vec3.add(
-            vec3.create(),
-            vec3.scale(vec3.create(), omega, -k_omega),
-            vec3.scale(vec3.create(), e_p, -k_R)
+
+        const R = mat3.fromQuat(mat3.create(), q);
+        const R_des = mat3.fromQuat(mat3.create(), q_des);
+
+        const R_err = mat3.create();
+        mat3.multiply(R_err, mat3.transpose(mat3.create(), R_des), R);
+        mat3.subtract(R_err, R_err, mat3.multiply(mat3.create(), mat3.transpose(mat3.create(), R), R_des));
+
+        const e_R = vec3.fromValues(
+            R_err[5], -R_err[2], R_err[1]
         );
+
+        const tau = vec3.create();
+        vec3.scale(tau, e_R, -k_R);
+        const temp = vec3.create();
+        vec3.scale(temp, omega, -k_omega);
+        vec3.add(tau, tau, temp);
 
         const controlInputs = vec4.fromValues(T, tau[0], tau[1], tau[2]);
         const f = vec4.transformMat4(vec4.create(), controlInputs, A_inv);
@@ -78,4 +88,3 @@ export default class Controller {
 
     reset() { }
 }
-
