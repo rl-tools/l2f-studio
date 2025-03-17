@@ -37,8 +37,8 @@ body {
     text-align: center;
 }
 button{
-    padding: 5px 10px;
-    font-size: 16px;
+    /* padding: 5px 10px;
+    font-size: 16px; */
 }
 #perturbation-id-input{
     width: 25em;
@@ -161,7 +161,7 @@ canvas{
 }
 
 #controller-selector-container{
-    margin-right: 5px;
+    margin-right: 8px;
 }
 #controller-selector-form{
     display: flex;
@@ -178,8 +178,10 @@ canvas{
     grid-template-columns: auto auto;
     grid-template-rows: auto auto;
     gap: 10px;
-    padding-left: 3px;
-    border-left: 5px solid black;
+    padding-left: 4px;
+    border-left: 2px solid black;
+    padding-top: 2px;
+    padding-bottom: 3px;
 }
 .policy-container-item{
     display: flex;
