@@ -136,6 +136,15 @@ canvas{
     word-break: break-all;
     margin-right: 12px;
 }
+#load-checkpoint-btn{
+    margin-left: 12px;
+    padding: 5px 10px;
+    font-size: 16px;
+}
+#load-checkpoint-btn-backend{
+    display: none;
+}
+
 #observations{
     font-family: monospace;
     font-size: 80%;

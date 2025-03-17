@@ -151,6 +151,22 @@ async function main(){
     document.getElementById("default-checkpoint-btn").addEventListener("click", async () => {
         load_model(file_url)
     })
+    document.getElementById("load-checkpoint-btn").addEventListener("click", async () => {
+        document.getElementById("load-checkpoint-btn-backend").click();
+    })
+    document.getElementById("load-checkpoint-btn-backend").addEventListener("change", async () => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const array_buffer = e.target.result;
+                load_model(array_buffer)
+                console.log("loaded model: ", model.checkpoint_name)
+                showStatus(`Loaded model: ${model.checkpoint_name}`);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    })
     document.getElementById("observations").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
