@@ -2,8 +2,8 @@ import { vec3, mat3, vec4, mat4, quat } from 'https://esm.sh/gl-matrix';
 
 export default class Controller {
     constructor() {
-        this.k_p = 1.0;
-        this.k_d = 1.0;
+        this.k_p = 5.0;
+        this.k_d = 5;
         this.k_R = 0.001;
         this.k_omega = 0.001;
     }

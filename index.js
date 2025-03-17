@@ -4,7 +4,7 @@ import { ParameterManager } from "./parameter_manager.js";
 import * as rlt from "rltools"
 import * as math from "mathjs"
 
-import Controller from  "./controller.js"
+// import Controller from  "./controller.js"
 
 // check url for "file" parameter
 const urlParams = new URLSearchParams(window.location.search);
@@ -97,13 +97,13 @@ class Policy{
         input_offset.forEach((x, i) => {
             input._data[0][0][i] = input._data[0][0][i] - x
         })
-        const output = this.model.evaluate_step(input)
+        const output = model.evaluate_step(input)
         this.step += 1
         return output.valueOf()[0][0]
     }
     reset() {
         this.step = 0
-        this.model.reset()
+        model.reset()
     }
 }
 
@@ -167,11 +167,11 @@ async function main(){
                 if(event.target.value === "policy"){
                     document.getElementById("policy-container").style.display = "block"
                     document.getElementById("controller-container").style.display = "none"
+                    proxy_controller.policy = new Policy(model)
                 }
                 else{
                     document.getElementById("policy-container").style.display = "none"
                     document.getElementById("controller-container").style.display = "block"
-                    
                     const event = new KeyboardEvent("keydown", {key: "Enter"});
                     document.getElementById("controller-code").dispatchEvent(event);
                 }
@@ -184,8 +184,8 @@ async function main(){
             const code = document.getElementById("controller-code").value
             const blob = new Blob([code], { type: 'application/javascript' });
             const url = URL.createObjectURL(blob);
-            // const Controller = (await import(url)).default
-            // URL.revokeObjectURL(url);
+            const Controller = (await import(url)).default
+            URL.revokeObjectURL(url);
             proxy_controller.policy = new Controller()
             window.controller = proxy_controller.policy
         }
