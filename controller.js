@@ -1,4 +1,4 @@
-import { vec3, mat3, vec4, mat4, quat } from 'https://esm.sh/gl-matrix';
+import { vec3, mat3, vec4, mat4, quat } from 'gl-matrix'; // vendored through the importmap in index.html
 
 export default class Controller {
     constructor() {
