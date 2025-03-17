@@ -134,6 +134,7 @@ canvas{
     /*color: #e63946;*/
     max-width: 700px;
     word-break: break-all;
+    margin-right: 12px;
 }
 #observations{
     font-family: monospace;

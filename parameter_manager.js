@@ -218,7 +218,7 @@ export class ParameterManager{
         })
 
         l2f.initialized.then(() => {
-            perturbation_id_input.value = "parameters.mdp.init.guidance"
+            perturbation_id_input.value = "parameters.dynamics.mass"
             perturbation_id_input.dispatchEvent(new Event("input"))
             const event = new Event('keydown')
             event.key = "Enter"
