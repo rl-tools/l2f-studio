@@ -1,7 +1,12 @@
 import { vec3, mat3, vec4, mat4, quat } from 'https://esm.sh/gl-matrix';
 
 export default class Controller {
-    constructor() { }
+    constructor() {
+        this.k_p = 1.0;
+        this.k_d = 1.0;
+        this.k_R = 0.001;
+        this.k_omega = 0.001;
+    }
 
     evaluate_step(state) {
         const stateDict = JSON.parse(state.get_state());
@@ -23,11 +28,6 @@ export default class Controller {
         const k_q = params['dynamics']['rotor_torque_constants'][0];
         const [a, b, c] = params['dynamics']['rotor_thrust_coefficients'][0];
 
-        const k_p = 3.0;
-        const k_d = 2.0;
-        const k_R = 1.0;
-        const k_omega = 0.1;
-
         const p_des = vec3.fromValues(0, 0, 0);
         const v_des = vec3.fromValues(0, 0, 0);
         const q_des = quat.fromValues(0, 0, 0, 1);
@@ -37,25 +37,33 @@ export default class Controller {
 
         const a_fb = vec3.add(
             vec3.create(),
-            vec3.scale(vec3.create(), e_p, -k_p),
-            vec3.scale(vec3.create(), e_v, -k_d)
+            vec3.scale(vec3.create(), e_p, -this.k_p),
+            vec3.scale(vec3.create(), e_v, -this.k_d)
         );
 
         const F_des = vec3.fromValues(0, 0, m * g);
         vec3.add(F_des, F_des, vec3.scale(vec3.create(), a_fb, m));
 
-        const A = mat4.fromValues(
+        // note: gl-matrix uses a column-major layout
+        const A = mat4.transpose(mat4.create(), mat4.fromValues(
             1, 1, 1, 1,
             -l, -l, l, l,
             -l, l, l, -l,
             -k_q, k_q, -k_q, k_q
-        );
+        ));
         const A_inv = mat4.invert(mat4.create(), A);
 
         const T = vec3.dot(F_des, vec3.transformQuat(vec3.create(), [0, 0, 1], q));
 
         const R = mat3.fromQuat(mat3.create(), q);
-        const R_des = mat3.fromQuat(mat3.create(), q_des);
+        const R_des_z = vec3.normalize(vec3.create(), F_des)
+        const R_des_y = vec3.cross(vec3.create(), R_des_z, vec3.fromValues(1, 0, 0));
+        const R_des_x = vec3.cross(vec3.create(), R_des_y, R_des_z);
+        const R_des = mat3.fromValues(
+            R_des_x[0], R_des_x[1], R_des_x[2],
+            R_des_y[0], R_des_y[1], R_des_y[2],
+            R_des_z[0], R_des_z[1], R_des_z[2]
+        );
 
         const R_err = mat3.create();
         mat3.multiply(R_err, mat3.transpose(mat3.create(), R_des), R);
@@ -66,9 +74,9 @@ export default class Controller {
         );
 
         const tau = vec3.create();
-        vec3.scale(tau, e_R, -k_R);
+        vec3.scale(tau, e_R, -this.k_R);
         const temp = vec3.create();
-        vec3.scale(temp, omega, -k_omega);
+        vec3.scale(temp, omega, -this.k_omega);
         vec3.add(tau, tau, temp);
 
         const controlInputs = vec4.fromValues(T, tau[0], tau[1], tau[2]);
@@ -82,8 +90,24 @@ export default class Controller {
             const rpm = (-b + Math.sqrt(discriminant)) / (2 * a);
             return Math.max(0.0, Math.min(1.0, rpm));
         }
+        
+        function solveRPM(fi){
+            // a + b*rpm + c*rpm^2 = fi
+            // c*rpm^2 + b*rpm + (a - fi) = 0
+            const b_new = b/c
+            const a_new = (a - fi)/c
+            const d = b_new*b_new/4 - a_new
+            if (d < 0) return 0.0;
+            let rpm = -b_new/2 + Math.sqrt(d);
+            if (rpm < 0){
+                rpm = -b_new/2 - Math.sqrt(d);
+            };
+            return rpm
+        }
 
-        return f_clipped.map(solveRPM);
+        const rpms = f_clipped.map(solveRPM);
+        const rpms_clipped = rpms.map(x=> x > 1 ? 1 : (x < -1 ? -1 : x))
+        return rpms_clipped.map(x => x * 2 - 1)
     }
 
     reset() { }

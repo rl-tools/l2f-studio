@@ -187,6 +187,7 @@ async function main(){
             // const Controller = (await import(url)).default
             // URL.revokeObjectURL(url);
             proxy_controller.policy = new Controller()
+            window.controller = proxy_controller.policy
         }
     })
     controller_code_loaded.then(() => {
