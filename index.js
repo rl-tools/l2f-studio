@@ -190,11 +190,11 @@ async function main(){
             window.controller = proxy_controller.policy
         }
     })
-    controller_code_loaded.then(() => {
-        const radio_button = document.querySelector('input[name="choice"][value="controller"]');
-        radio_button.checked = true;
-        radio_button.dispatchEvent(new Event('change'));
-    })
+    // controller_code_loaded.then(() => { // mocking switch to policy for testing
+    //     const radio_button = document.querySelector('input[name="choice"][value="controller"]');
+    //     radio_button.checked = true;
+    //     radio_button.dispatchEvent(new Event('change'));
+    // })
 
 
     const seed = 12
