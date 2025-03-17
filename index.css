@@ -14,7 +14,6 @@ body {
 }
 #controls-box{
     background-color: #c5c5c5;
-    padding: 5px;
 }
 .controls-container {
     display: flex;
@@ -138,8 +137,6 @@ canvas{
 }
 #load-checkpoint-btn{
     margin-left: 12px;
-    padding: 5px 10px;
-    font-size: 16px;
 }
 #load-checkpoint-btn-backend{
     display: none;
@@ -160,10 +157,11 @@ canvas{
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    margin: 8px;
 }
 
 #controller-selector-container{
-    margin-right: 15px;
+    margin-right: 5px;
 }
 #controller-selector-form{
     display: flex;
@@ -180,6 +178,8 @@ canvas{
     grid-template-columns: auto auto;
     grid-template-rows: auto auto;
     gap: 10px;
+    padding-left: 3px;
+    border-left: 5px solid black;
 }
 .policy-container-item{
     display: flex;
