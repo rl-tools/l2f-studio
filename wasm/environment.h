@@ -32,8 +32,16 @@ namespace builder{
         01.00, // d_action
     };
 
+    struct PARAMETERS_DOMAIN_RANDOMIZATION_OPTIONS{
+        static constexpr bool ON = false;
+        static constexpr bool THRUST_TO_WEIGHT = ON;
+        static constexpr bool MASS = ON;
+        static constexpr bool THRUST_TO_WEIGHT_TO_TORQUE_TO_INERTIA = ON;
+        static constexpr bool MASS_SIZE_DEVIATION = ON;
+    };
+
     using PARAMETERS_SPEC = ParametersBaseSpecification<T, TI, 4, REWARD_FUNCTION>;
-    using PARAMETERS_TYPE = ParametersDomainRandomization<ParametersSpecification<T, TI, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>;
+    using PARAMETERS_TYPE = ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, PARAMETERS_DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>;
 
     static constexpr typename PARAMETERS_TYPE::Dynamics dynamics = parameters::dynamics::registry<MODEL, PARAMETERS_SPEC>;
     static constexpr TI SIMULATION_FREQUENCY = 100;

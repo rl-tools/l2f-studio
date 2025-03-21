@@ -6,7 +6,7 @@
 ```
 
 ```
-cp ../RLtools.js/rl_tools.js blob/rl_tools.js
+cp ../rltools.js/main.js blob/lib/rltools.js
 ```
 
 ```
