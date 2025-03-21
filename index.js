@@ -231,8 +231,8 @@ async function main(){
     proxy_controller = new ProxyController(new Policy(model))
     const l2f = new L2F(sim_container, 10, proxy_controller, seed)
 
-    const sim_controls = new SimControls(l2f, proxy_controller)
     const parameter_manager = new ParameterManager(l2f)
+    const sim_controls = new SimControls(l2f, proxy_controller, parameter_manager)
 }
 window.onload = main
 

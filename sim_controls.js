@@ -1,5 +1,5 @@
 export class SimControls{
-    constructor(l2f, policy){
+    constructor(l2f, policy, parameter_manager){
         this.policy = policy
         const num_vehicles_input = document.getElementById("num-vehicles")
         num_vehicles_input.addEventListener("input", async () => {
@@ -13,7 +13,7 @@ export class SimControls{
             }
             else{
                 elements.forEach(el => {
-                    el.original_values = el.original_values.concat(get_values_from_path(el.path).slice(-diff))
+                    el.original_values = el.original_values.concat(parameter_manager.get_values_from_path(el.path).slice(-diff))
                 })
             }
         })
