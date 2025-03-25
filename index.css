@@ -16,12 +16,18 @@ body {
     overflow: auto;
     white-space: nowrap;
 }
-.vehicle{
+#vehicle-container-header{
     margin: 10px;
-    padding: 5px;
+}
+#vehicle-load-dynamics-btn-backend{
+    display: none;
+}
+.vehicle{
+    display: block;
+    margin: 10px;
 }
 .vehicle-hover{
-    background-color: grey;
+    background-color: rgb(235, 235, 235);
 }
 .vehicle-body{
     margin-left: 10px;

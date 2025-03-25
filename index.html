@@ -30,8 +30,9 @@
         </li>
     </template>
     <template id="vehicle-template">
-        <div class="vehicle">
+        <label class="vehicle">
             <div class="vehicle-header">
+                <input type="checkbox" class="vehicle-checkbox">
                 <span class="vehicle-title"></span>
                 <span class="vehicle-id"></span>
             </div>
@@ -45,7 +46,7 @@
                     <span class="vehicle-action"></span>
                 </div>
             </div>
-        </div>
+        </label>
     </template>
     <link rel="stylesheet" href="./index.css">
     <script type="importmap">
@@ -68,7 +69,14 @@
 <body>
     <div id="status"></div>
     <div id="top-container">
-        <div id="vehicle-container"></div>
+        <div id="vehicle-container">
+            <div id="vehicle-container-header">
+                <input type="button" id="vehicle-select-all-btn" value="Select All"></input>
+                <input type="file" id="vehicle-load-dynamics-btn-backend"></input>
+                <input type="button" id="vehicle-load-dynamics-btn" value="Load Dynamics"></input>
+            </div>
+            <div id="vehicle-list"></div>
+        </div>
         <div id="sidebar-resizer">
             <div id="sidebar-resizer-handle"></div>
         </div>

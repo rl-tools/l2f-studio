@@ -206,11 +206,19 @@ async function main(){
             window.controller = proxy_controller.policy
         }
     })
-    // controller_code_loaded.then(() => { // mocking switch to policy for testing
-    //     const radio_button = document.querySelector('input[name="choice"][value="controller"]');
-    //     radio_button.checked = true;
-    //     radio_button.dispatchEvent(new Event('change'));
-    // })
+
+    document.getElementById("vehicle-select-all-btn").addEventListener("click", () => {
+        const vehicle_container = document.getElementById("vehicle-list")
+        const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
+        const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
+        let all_checked = checkboxes.every(checkbox => checkbox.checked)
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = !all_checked
+        })
+    })
+    document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
+        document.getElementById("vehicle-load-dynamics-btn-backend").click();
+    })
 
 
     const seed = 12
@@ -232,7 +240,7 @@ async function main(){
     const l2f = new L2F(sim_container, 10, proxy_controller, seed)
 
     l2f.state_update_callbacks.push((states) => {
-        const vehicle_container = document.getElementById("vehicle-container")
+        const vehicle_container = document.getElementById("vehicle-list")
         if(vehicle_container.children.length != states.length){
             const vehicle_template = document.getElementById("vehicle-template")
             vehicle_container.innerHTML = ""
@@ -242,7 +250,6 @@ async function main(){
                 vehicle.querySelector(".vehicle-title").textContent = `Vehicle ${i}`
                 // vehicle.querySelector(".vehicle-id").textContent = JSON.stringify(state.parameters.dynamics, null, 2)
                 vehicle_container.appendChild(vehicle)
-                vehicle.title = JSON.stringify(state.parameters.dynamics, null, 2)
                 // on hover
                 vehicle.addEventListener("mouseenter", (event) => {
                     console.log(`hovering over vehicle ${i}`)
@@ -263,12 +270,36 @@ async function main(){
             }
             vehicle.querySelector(".vehicle-position").textContent = state.state.position.map(x => fixed(x, 3)).join(",")
             vehicle.querySelector(".vehicle-action").textContent = state.action.map(x => fixed(x, 2)).join(",")
+            vehicle.title = JSON.stringify(state.parameters.dynamics, null, 2)
         })
 
     })
 
     const parameter_manager = new ParameterManager(l2f)
     const sim_controls = new SimControls(l2f, proxy_controller, parameter_manager)
+
+    document.getElementById("vehicle-load-dynamics-btn-backend").addEventListener("change", async () => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                console.log(`Loaded dynamics from ${file.name}`)
+                const parameters = JSON.parse(e.target.result)
+                const dynamics = parameters.dynamics
+                const vehicle_container = document.getElementById("vehicle-list")
+                const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
+                const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
+                const ids = []
+                checkboxes.forEach((checkbox, i) => {
+                    if(checkbox.checked){
+                        ids.push(i)
+                    }
+                })
+                parameter_manager.set_dynamics(ids, ids.map(() => dynamics))
+            };
+            reader.readAsText(file);
+        }
+    })
 }
 
 document.addEventListener("DOMContentLoaded", main)
