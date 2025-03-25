@@ -28,7 +28,25 @@
           <span class="perturbation-group-item-range"></span>
           <span class="perturbation-group-item-value"></span>
         </li>
-      </template>
+    </template>
+    <template id="vehicle-template">
+        <div class="vehicle">
+            <div class="vehicle-header">
+                <span class="vehicle-title"></span>
+                <span class="vehicle-id"></span>
+            </div>
+            <div class="vehicle-body">
+                <div>
+                    <span>Position: </span>
+                    <span class="vehicle-position"></span>
+                </div>
+                <div>
+                    <span>Action: </span>
+                    <span class="vehicle-action"></span>
+                </div>
+            </div>
+        </div>
+    </template>
     <link rel="stylesheet" href="./index.css">
     <script type="importmap">
         {
@@ -45,10 +63,17 @@
         }
     </script>
     <script type="module" src="./index.js"></script>
+    <script type="module" src="./sidebar.js"></script>
 </head>
 <body>
     <div id="status"></div>
-    <div id="sim-container"></div>
+    <div id="top-container">
+        <div id="vehicle-container"></div>
+        <div id="sidebar-resizer">
+            <div id="sidebar-resizer-handle"></div>
+        </div>
+        <div id="sim-container"></div>
+    </div>
     <div id="controls-box">
         <div id="controller-options-container">
             <div id="controller-selector-container">

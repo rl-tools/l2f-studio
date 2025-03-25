@@ -231,10 +231,47 @@ async function main(){
     proxy_controller = new ProxyController(new Policy(model))
     const l2f = new L2F(sim_container, 10, proxy_controller, seed)
 
+    l2f.state_update_callbacks.push((states) => {
+        const vehicle_container = document.getElementById("vehicle-container")
+        if(vehicle_container.children.length != states.length){
+            const vehicle_template = document.getElementById("vehicle-template")
+            vehicle_container.innerHTML = ""
+            states.forEach((state, i) => {
+                const vehicle_pre = vehicle_template.content.cloneNode(true)
+                const vehicle = vehicle_pre.querySelector(".vehicle")
+                vehicle.querySelector(".vehicle-title").textContent = `Vehicle ${i}`
+                // vehicle.querySelector(".vehicle-id").textContent = JSON.stringify(state.parameters.dynamics, null, 2)
+                vehicle_container.appendChild(vehicle)
+                vehicle.title = JSON.stringify(state.parameters.dynamics, null, 2)
+                // on hover
+                vehicle.addEventListener("mouseenter", (event) => {
+                    console.log(`hovering over vehicle ${i}`)
+                    vehicle.classList.add("vehicle-hover")
+                    event.stopPropagation()
+                })
+                vehicle.addEventListener("mouseleave", (event) => {
+                    vehicle.classList.remove("vehicle-hover")
+                    event.stopPropagation()
+                })
+            })
+        }
+        states.forEach((state, i) => {
+            const vehicle = vehicle_container.children[i]
+            const fixed = (x, n) => {
+                const y = x.toFixed(n);
+                return y >= 0 ? `+${y}` : y;
+            }
+            vehicle.querySelector(".vehicle-position").textContent = state.state.position.map(x => fixed(x, 3)).join(",")
+            vehicle.querySelector(".vehicle-action").textContent = state.action.map(x => fixed(x, 2)).join(",")
+        })
+
+    })
+
     const parameter_manager = new ParameterManager(l2f)
     const sim_controls = new SimControls(l2f, proxy_controller, parameter_manager)
 }
-window.onload = main
+
+document.addEventListener("DOMContentLoaded", main)
 
 const drag_and_drop_overlay = document.getElementById('drag-and-drop-overlay');
 let drag_and_drop_counter = 0;

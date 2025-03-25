@@ -3,14 +3,57 @@ body {
     flex-direction: column;
     height: 100vh;
     margin: 0;
-    background-color: black;
     overflow: hidden;
 }
-#sim-container {
+#top-container {
+    display: flex;
+    flex-direction: row;
     flex-grow: 1;
-    background-color: white;
-    width: 100%;
     min-height: 0;
+}
+#vehicle-container{
+    width: 200px;
+    overflow: auto;
+    white-space: nowrap;
+}
+.vehicle{
+    margin: 10px;
+    padding: 5px;
+}
+.vehicle-hover{
+    background-color: grey;
+}
+.vehicle-body{
+    margin-left: 10px;
+}
+.vehicle-position{
+    font-family: monospace;
+}
+.vehicle-action{
+    font-family: monospace;
+}
+#sidebar-resizer {
+    width: 15px;
+    background-color: #ccc;
+    cursor: col-resize;
+    user-select: none;
+    background: repeating-linear-gradient(45deg, #e3e3e3, #e3e3e3 10px, #f1f1f1 10px, #f1f1f1 20px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#sidebar-resizer-handle{
+    width: 6px;
+    height: 50px;
+    background: #ffffff;
+    border-radius: 3px;
+    cursor: ew-resize;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+#sim-container {
+    background-color: white;
+    flex: 1;
+    min-width: 0;
 }
 #controls-box{
     background-color: #c5c5c5;

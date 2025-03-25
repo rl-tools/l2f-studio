@@ -19,6 +19,9 @@ export class L2F{
 
         this.seed = seed
 
+
+        this.state_update_callbacks = []
+
         const urlParams = new URLSearchParams(window.location.search);
         this.DEBUG = urlParams.has('DEBUG') ? urlParams.get('DEBUG') === 'true' : false
 
@@ -89,14 +92,24 @@ export class L2F{
         else{
             this.states = this.states.slice(0, num)
         }
-        this.update_render_state()
         this.parameters = this.states.map(state => JSON.parse(state.get_parameters()))
+        this.update_render_state()
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         return diff
     }
     update_render_state(){
         this.render_states =  this.states.map(state => JSON.parse(state.get_state()))
         this.render_actions = this.states.map(state => JSON.parse(state.get_action()))
+
+        
+        const combined_state = this.render_states.map((state, i) => {
+            return {
+                "state": state,
+                "action": this.render_actions[i],
+                "parameters": this.parameters[i]
+            }
+        })
+        this.state_update_callbacks.forEach(callback => callback(combined_state))
     }
     simulate_step(){
         let dts = []
