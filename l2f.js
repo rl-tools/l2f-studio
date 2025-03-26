@@ -112,13 +112,17 @@ export class L2F{
         this.state_update_callbacks.forEach(callback => callback(combined_state))
     }
     simulate_step(){
-        let dts = []
-        this.states.forEach(state => {
-            const action = this.policy.evaluate_step(state)
+        const actions = this.policy.evaluate_step(this.states)
+        console.assert(actions.length === this.states.length, "Action dimension mismatch")
+        this.states.forEach((state, i) => {
+            const action = actions[i]
             console.assert(action.length === state.action_dim, "Action dimension mismatch")
             action.map((v, i) => {
                 state.set_action(i, v)
             })
+        })
+        let dts = []
+        this.states.forEach((state, i) => {
             const dt = state.step()
             dts.push(dt)
         })

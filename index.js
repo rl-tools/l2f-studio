@@ -46,66 +46,71 @@ let model = null
 class Policy{
     constructor(){
         this.step = 0
-        this.state = null
+        this.states = null
     }
-    evaluate_step(state) {
-        state.observe()
+    get_observation(state, obs){
+        let vehicle_state = null
         const full_observation = [...Array(state.observation_dim).keys()].map(i => state.get_observation(i))
         console.assert(full_observation.length > 18, "Observation is smaller than base observation")
-        const get_obs = (obs) => {
-            let vehicle_state = null
-            const get_state = () => {
-                if (vehicle_state === null) {
-                    vehicle_state = JSON.parse(state.get_state())
-                }
-                return vehicle_state
+        const get_state = () => {
+            if (vehicle_state === null) {
+                vehicle_state = JSON.parse(state.get_state())
             }
-            switch (true) {
-                case obs === "Position":
-                    return full_observation.slice(0, 3)
-                case obs === "OrientationRotationMatrix":
-                    return full_observation.slice(3, 12)
-                case obs === "LinearVelocity":
-                    return full_observation.slice(12, 15)
-                case obs === "AngularVelocity":
-                    return full_observation.slice(15, 18)
-                case obs.startsWith("AngularVelocityDelayed"):
-                    const delay_string = obs.split("(")[1].split(")")[0]
-                    const delay = parseInt(delay_string)
-                    if (delay === 0) {
-                        return full_observation.slice(15, 18)
-                    } else {
-                        const s = get_state()
-                        return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
-                    }
-                case obs.startsWith("ActionHistory"):
-                    const history_length_string = obs.split("(")[1].split(")")[0]
-                    const history_length = parseInt(history_length_string)
-                    return full_observation.slice(18, 18 + history_length * 4)
-                case obs === "RotorSpeeds":
-                    const parameters = JSON.parse(state.get_parameters())
-                    const min_action = parameters.dynamics.action_limit.min
-                    const max_action = parameters.dynamics.action_limit.max
-                    return get_state()["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
-                default:
-                    console.error("Unknown observation: ", obs)
-                    return null
-            }
+            return vehicle_state
         }
-        const observation_description = document.getElementById("observations").observation
-        let input = math.matrix([observation_description.split(".").map(x => get_obs(x)).flat()])
-        const input_offset = default_trajectory(this.step / 100)
-        input_offset.forEach((x, i) => {
-            input._data[0][i] = input._data[0][i] - x
+        switch (true) {
+            case obs === "Position":
+                return full_observation.slice(0, 3)
+            case obs === "OrientationRotationMatrix":
+                return full_observation.slice(3, 12)
+            case obs === "LinearVelocity":
+                return full_observation.slice(12, 15)
+            case obs === "AngularVelocity":
+                return full_observation.slice(15, 18)
+            case obs.startsWith("AngularVelocityDelayed"):
+                const delay_string = obs.split("(")[1].split(")")[0]
+                const delay = parseInt(delay_string)
+                if (delay === 0) {
+                    return full_observation.slice(15, 18)
+                } else {
+                    const s = get_state()
+                    return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
+                }
+            case obs.startsWith("ActionHistory"):
+                const history_length_string = obs.split("(")[1].split(")")[0]
+                const history_length = parseInt(history_length_string)
+                return full_observation.slice(18, 18 + history_length * 4)
+            case obs === "RotorSpeeds":
+                const parameters = JSON.parse(state.get_parameters())
+                const min_action = parameters.dynamics.action_limit.min
+                const max_action = parameters.dynamics.action_limit.max
+                return get_state()["rpm"].map(x => (x - min_action) / (max_action - min_action) * 2 - 1)
+            default:
+                console.error("Unknown observation: ", obs)
+                return null
+        }
+    }
+    evaluate_step(states) {
+        if(!this.states || this.states.length !== states.length){
+            this.states = states.map(() => null)
+        }
+        return states.map((state, i) => {
+            state.observe()
+            const observation_description = document.getElementById("observations").observation
+            let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
+            const input_offset = default_trajectory(this.step / 100)
+            input_offset.forEach((x, i) => {
+                input._data[0][i] = input._data[0][i] - x
+            })
+            const [output, new_state] = model.evaluate_step(input, this.states[i])
+            this.states[i] = new_state
+            this.step += 1
+            return output.valueOf()[0]
         })
-        const [output, new_state] = model.evaluate_step(input, this.state)
-        this.state = new_state
-        this.step += 1
-        return output.valueOf()[0]
     }
     reset() {
         this.step = 0
-        this.state = null
+        this.states = null
     }
 }
 
@@ -168,6 +173,7 @@ async function main(){
             };
             reader.readAsArrayBuffer(file);
         }
+        event.target.value = "";
     })
     document.getElementById("observations").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
