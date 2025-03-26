@@ -152,6 +152,7 @@ async function load_model(checkpoint){
     checkpoint_span.title = model.description()
     document.getElementById("observations").value = model.meta.environment.observation
     document.getElementById("observations").observation = model.meta.environment.observation
+    proxy_controller.reset()
 }
 
 async function main(){
