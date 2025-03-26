@@ -46,6 +46,7 @@ let model = null
 class Policy{
     constructor(){
         this.step = 0
+        this.state = null
     }
     evaluate_step(state) {
         state.observe()
@@ -92,18 +93,19 @@ class Policy{
             }
         }
         const observation_description = document.getElementById("observations").observation
-        let input = math.matrix([[observation_description.split(".").map(x => get_obs(x)).flat()]])
+        let input = math.matrix([observation_description.split(".").map(x => get_obs(x)).flat()])
         const input_offset = default_trajectory(this.step / 100)
         input_offset.forEach((x, i) => {
-            input._data[0][0][i] = input._data[0][0][i] - x
+            input._data[0][i] = input._data[0][i] - x
         })
-        const output = model.evaluate_step(input)
+        const [output, new_state] = model.evaluate_step(input, this.state)
+        this.state = new_state
         this.step += 1
-        return output.valueOf()[0][0]
+        return output.valueOf()[0]
     }
     reset() {
         this.step = 0
-        model.reset()
+        this.state = null
     }
 }
 
