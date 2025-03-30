@@ -41,6 +41,24 @@ class ProxyController{
         this.policy.reset()
     }
 }
+class MultiController{
+    constructor(Controller){
+        this.Controller = Controller
+        this.controllers = null
+    }
+    evaluate_step(state){
+        if(this.controllers === null || this.controllers.length !== state.length){
+            this.controllers = state.map(() => new this.Controller())
+        }
+        return state.map((state, i) => this.controllers[i].evaluate_step(state))
+    }
+    reset(){
+        if(this.controllers === null){
+            return
+        }
+        this.controllers.forEach(controller => controller.reset())
+    }
+}
 
 let model = null
 class Policy{
@@ -211,7 +229,7 @@ async function main(){
             const url = URL.createObjectURL(blob);
             const Controller = (await import(url)).default
             URL.revokeObjectURL(url);
-            proxy_controller.policy = new Controller()
+            proxy_controller.policy = new MultiController(Controller)
             window.controller = proxy_controller.policy
         }
     })
