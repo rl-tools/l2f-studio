@@ -47,14 +47,32 @@ export class SimControls{
         })
 
         const pause_on_reset_checkbox = document.getElementById("pause-on-reset")
-        const sample_initial_states_button = document.getElementById("sample-initial-states")
-        sample_initial_states_button.addEventListener("click", () => {
+
+        const sample_or_not = (state, sample) => {
+            if(sample){
+                state.sample_initial_state()
+            }
+            else{
+                state.initial_state()
+            }
+        }
+        document.getElementById("sample-initial-states").addEventListener("click", () => {
             l2f.states.forEach(state => {
                 if(pause_on_reset_checkbox.checked && pause_button.innerText === "Pause"){
                     pause_button.innerText = "Resume"
                     l2f.request_pause = true
                 }
-                state.sample_initial_state()
+                sample_or_not(state, true)
+            })
+            this.policy.reset()
+        })
+        document.getElementById("initial-states").addEventListener("click", () => {
+            l2f.states.forEach(state => {
+                if(pause_on_reset_checkbox.checked && pause_button.innerText === "Pause"){
+                    pause_button.innerText = "Resume"
+                    l2f.request_pause = true
+                }
+                sample_or_not(state, false)
             })
             this.policy.reset()
         })
