@@ -15,49 +15,49 @@
             font-size: 1.5em;
             margin-bottom: 15px;
         }
-        #status {
+        #gamepad-status {
             padding: 8px;
             margin-bottom: 15px;
             border-radius: 4px;
             font-weight: bold;
         }
-        .connected {
+        .gamepad-connected {
             background-color: #d4edda;
             color: #155724;
         }
-        .disconnected {
+        .gamepad-disconnected {
             background-color: #f8d7da;
             color: #721c24;
         }
-        .controls-grid {
+        .gamepad-controls-grid {
             display: grid;
             grid-template-columns: 120px 1fr 100px 80px; /* Added column for raw value */
             gap: 10px;
             align-items: center;
             margin-bottom: 5px;
         }
-        .slider-container {
+        .gamepad-slider-container {
             position: relative;
             height: 30px;
         }
-        .slider {
+        .gamepad-slider {
             width: 100%;
             height: 10px;
             pointer-events: none;
         }
-        .button-indicator {
+        .gamepad-button-indicator {
             width: 20px;
             height: 20px;
             border-radius: 50%;
             background-color: #ccc;
         }
-        .buttons-container {
+        .gamepad-buttons-container {
             margin-top: 20px;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
-        button {
+        .gamepad-button {
             padding: 8px 12px;
             border: none;
             border-radius: 4px;
@@ -65,27 +65,27 @@
             color: white;
             cursor: pointer;
         }
-        button:hover {
+        .gamepad-button:hover {
             background-color: #0069d9;
         }
-        button:disabled {
+        .gamepad-button:disabled {
             background-color: #6c757d;
             cursor: not-allowed;
         }
-        .value-display, .raw-value-display {
+        .gamepad-value-display, .gamepad-raw-value-display {
             text-align: right;
             font-family: monospace;
         }
-        .raw-value-display {
+        .gamepad-raw-value-display {
             color: #555; /* Slightly muted to distinguish from processed value */
         }
-        .mapping-button {
+        .gamepad-mapping-button {
             width: 100%;
         }
-        .main-button {
+        .gamepad-main-button {
             grid-column: span 2;
         }
-        .separator {
+        .gamepad-separator {
             height: 1px;
             background-color: #ddd;
             margin: 15px 0;
@@ -93,252 +93,258 @@
     </style>
 </head>
 <body>
-    <h1>Quadrotor Gamepad Controller</h1>
-    <div id="status" class="disconnected">No gamepad connected</div>
-    <button id="connectGamepad" class="main-button">Connect Gamepad</button>
-    <div class="separator"></div>
-    <h2>Control Outputs</h2>
-    <template id="axis-template">
-        <div class="controls-grid">
+    <template id="gamepad-axis-template">
+        <div class="gamepad-controls-grid">
             <div class="gamepad-controls-name"></div>
-            <div class="slider-container"><input type="range" class="slider" min="-1" max="1" value="0" step="0.01" disabled></div>
-            <div class="value-display">0.00</div>
+            <div class="gamepad-slider-container"><input type="range" class="gamepad-slider" min="-1" max="1" value="0" step="0.01" disabled></div>
+            <div class="gamepad-value-display">0.00</div>
         </div>
     </template>
-    <template id="button-template">
-        <div class="controls-grid">
+    <template id="gamepad-button-template">
+        <div class="gamepad-controls-grid">
             <div class="gamepad-controls-name"></div>
-            <div class="button-indicator"></div>
-            <div class="value-display">Released</div>
+            <div class="gamepad-button-indicator"></div>
+            <div class="gamepad-value-display">Released</div>
             <div></div>
         </div>
     </template>
-    <div id="gamepad-state">
+    <template id="gamepad-template">
+        <h1>Quadrotor Gamepad Controller</h1>
+        <div id="gamepad-status" class="disconnected">No gamepad connected</div>
+        <div class="gamepad-separator"></div>
+        <h2>Control Outputs</h2>
+        <div id="gamepad-state">
 
-    </div>
-    <div class="separator"></div>
-    <h2>Control Mapping</h2>
-    <div class="buttons-container">
-        <button class="gamepad-mapping-button" disabled onclick="startMapping('thrust', 'axis', 'up', this)">Map Thrust Axis</button>
-        <button class="gamepad-mapping-button" disabled onclick="startMapping('roll', 'axis', 'right', this)">Map Roll Axis</button>
-        <button class="gamepad-mapping-button" disabled onclick="startMapping('pitch', 'axis', 'up', this)">Map Pitch Axis</button>
-        <button class="gamepad-mapping-button" disabled onclick="startMapping('yaw', 'axis', 'right', this)">Map Yaw Axis</button>
-        <button class="gamepad-mapping-button" disabled onclick="startMapping('button1', 'button', this)">Map Button 1</button>
-        <button class="gamepad-mapping-button" disabled onclick="startMapping('button2', 'button', this)">Map Button 2</button>
-    </div>
-    <div id="mapping-state">
-    </div>
+        </div>
+        <div class="gamepad-separator"></div>
+        <h2>Control Mapping</h2>
+        <div id="gamepad-button-container">
+        </div>
+    </template>
     <script>
-        let activeGamepad = null;
-        const controlMap = {
-        };
-        let state = null;
-        let baseValues = {};
-        let mapping_state = null;
-        const statusElement = document.getElementById('status');
-        const axisValueSpan = document.getElementById('axisValue');
+        /*
+        mapping button
+        mapping_state
+          live_index
+          active
+        controlMap
+        callbacks
 
-        function render_live_view(){
-            const gamepad_state = document.getElementById('gamepad-state');
-            gamepad_state.innerHTML = '';
-            for (const control in controlMap) {
-                const details = controlMap[control];
-                const template = document.getElementById(details.type === 'axis' ? 'axis-template' : 'button-template');
-                const clone = template.content.cloneNode(true);
-                gamepad_state.appendChild(clone);
-                const name = gamepad_state.lastElementChild.querySelector('.gamepad-controls-name');
-                name.textContent = control
-                controlMap[control].set_value = (value) =>{
-                    const slider = gamepad_state.lastElementChild.querySelector('.slider');
-                    const valueDisplay = gamepad_state.lastElementChild.querySelector('.value-display');
-                    if (details.type === 'axis') {
-                        slider.value = value;
-                        console.log(`${control} value: ${value}`);
-                        valueDisplay.textContent = value.toFixed(2);
-                    } else {
-                        const buttonIndicator = gamepad_state.lastElementChild.querySelector('.button-indicator');
-                        buttonIndicator.style.backgroundColor = value ? '#28a745' : '#ccc';
-                        valueDisplay.textContent = value ? 'Pressed' : 'Released';
-                    }
-                };
+        */
+        class Mapper{
+            constructor(type, name, gamepad, control_map, completion_handler){
+                this.type = type
+                this.name = name
+                this.active = false
+                this.index = -1
+                this.live_index = -1
+                this.max_deflection = 0
+                this.base = null
+                this.invert = false
+                this.base_values = {}
+                this.control_map = control_map
+                for (let i = 0; i < gamepad.axes.length; i++) {
+                    this.base_values[i] = gamepad.axes[i];
+                }
+                this.finished = false
+                this.completion_handler = completion_handler
             }
-        }
-
-        function update_live_view(gamepad){
-            for (const control in controlMap) {
-                const details = controlMap[control];
-                if(details.index === -1) continue;
-                const raw_value = gamepad[details.type === 'axis' ? 'axes' : 'buttons'][details.index];
-                if(details.type === 'axis'){
-                    const value = (raw_value - details.base);
-                    const value_clipped = Math.max(-1, Math.min(1, value));
-                    const value_inverted = details.invert ? -value_clipped : value_clipped;
-                    details.set_value(value_inverted);
+            handle_mapping_axis(gamepad){
+                if (!this.active) {
+                    let maxDiff = 0;
+                    for (let i = 0; i < gamepad.axes.length; i++) {
+                        const diff = Math.abs(gamepad.axes[i] - this.base_values[i]);
+                        if(i == 0){
+                            console.log(`Axis ${i}: ${gamepad.axes[i]}`);
+                        }
+                        if (diff > maxDiff) {
+                            maxDiff = diff;
+                            this.live_index = i;
+                            this.base = this.base_values[i];
+                        }
+                        if (diff > 0.5) {
+                            this.base = this.base_values[i];
+                            this.active = true;
+                            this.index = i;
+                            const movement = gamepad.axes[i] - this.base_values[i];
+                            this.invert = movement < 0;
+                            break;
+                        }
+                    }
+                } else {
+                    const value = gamepad.axes[this.index];
+                    const deflection = Math.abs(value - this.base);
+                    if (deflection > this.max_deflection) {
+                        this.max_deflection = deflection;
+                    } 
+                    if (this.max_deflection - deflection > 0.1){
+                        this.finished = true
+                    }
+                }
+                // live_view
+                const was_not_mapped = this.control_map[this.name] === undefined;
+                if(was_not_mapped){
+                    this.control_map[this.name] = { 
+                        type: 'axis', 
+                        index: this.active ? this.index : this.live_index, 
+                        invert: this.invert,
+                        base: this.base,
+                        max_deflection: this.max_deflection
+                    };
                 }
                 else{
-                    details.set_value(value.pressed);
+                    this.control_map[this.name].index = this.live_index;
+                    this.control_map[this.name].invert = this.invert;
+                    this.control_map[this.name].max_deflection = this.max_deflection;
                 }
-            }
-        }
-
-        function init() {
-            const saved = null; //localStorage.getItem('quadrotorGamepadMap');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    Object.assign(controlMap, parsed);
-                } catch (e) {}
-            }
-
-            window.addEventListener('gamepadconnected', () => {
-                const gamepad = event.gamepad || event;
-                activeGamepad = gamepad;
-                baseValues = {};
-                statusElement.textContent = 'Gamepad connected: ' + gamepad.id;
-                statusElement.className = 'connected';
-                document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
-            });
-        }
-
-        function startMapping(control, type, positive_direction, button) {
-            if(activeGamepad === null) return;
-            if(mapping_state !== null) return;
-
-            if (!activeGamepad) return;
-            const gamepad = navigator.getGamepads()[activeGamepad.index];
-            if (gamepad) {
-                for (let i = 0; i < gamepad.axes.length; i++) {
-                    baseValues[i] = gamepad.axes[i];
+                if(this.finished){
+                    this.completion_handler();
                 }
+                return was_not_mapped
             }
-
-            mapping_state = { "type": type, "name": control, active: false, index: -1, live_index: -1, max_deflection: 0, base: null, invert: false, "button": button , "button_text": button.textContent};
-            button.textContent = type === "button" ? 'Press Button' : `Move ${positive_direction === 'up' ? 'Up/Forward' : 'Right'}`;
-            document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = true; });
-            button.disabled = false;
-        }
-
-        function handleMapping(gamepad){
-            if(mapping_state && mapping_state.type === 'axis'){
-                handleMappingAxis(gamepad);
-            } else if(mapping_state && mapping_state.type === 'button'){
-                handleMappingButton(gamepad);
-            }
-        }
-        function handleMappingAxis(gamepad){
-            if (!mapping_state.active) {
-                let maxDiff = 0;
-                for (let i = 0; i < gamepad.axes.length; i++) {
-                    const diff = Math.abs(gamepad.axes[i] - baseValues[i]);
-                    if (diff > maxDiff) {
-                        maxDiff = diff;
-                        mapping_state.live_index = i;
-                        mapping_state.base = baseValues[i];
-                    }
-                    if (diff > 0.5) {
-                        mapping_state.base = baseValues[i];
-                        mapping_state.active = true;
-                        mapping_state.index = i;
-                        const movement = gamepad.axes[i] - baseValues[i];
-                        mapping_state.invert = movement < 0;
-                        break;
+            handle_mapping_button(gamepad){
+                for (let i = 0; i < gamepad.buttons.length; i++) {
+                    if (gamepad.buttons[i].pressed) {
+                        this.control_map[this.name] = { type: 'button', index: i};
+                        this.completion_handler()
+                        return false;
                     }
                 }
-            } else {
-                const value = gamepad.axes[mapping_state.index];
-                const deflection = Math.abs(value - mapping_state.base);
-                if (deflection > mapping_state.max_deflection) {
-                    mapping_state.max_deflection = deflection;
-                } 
-                if (mapping_state.max_deflection - deflection > 0.1){
-                    complete_mapping();
-                    return;
-                }
+                return false
             }
-            // live_view
-            const was_not_mapped = controlMap[mapping_state.name] === undefined;
-            if(was_not_mapped){
-                controlMap[mapping_state.name] = { 
-                    type: 'axis', 
-                    index: mapping_state.active ? mapping_state.index : mapping_state.live_index, 
-                    invert: mapping_state.invert,
-                    base: mapping_state.base,
-                    max_deflection: mapping_state.max_deflection
-                };
-            }
-            else{
-                controlMap[mapping_state.name].index = mapping_state.live_index;
-                controlMap[mapping_state.name].invert = mapping_state.invert;
-                controlMap[mapping_state.name].max_deflection = mapping_state.max_deflection;
-            }
-            if(was_not_mapped){
-                render_live_view();
-            }
-        }
-        function handleMappingButton(gamepad){
-            for (let i = 0; i < gamepad.buttons.length; i++) {
-                if (gamepad.buttons[i].pressed) {
-                    controlMap[mapping_state.name] = { type: 'button', index: mapping_state.index};
-                    complete_mapping()
-                    return;
+            handle_mapping(gamepad){
+                if(this.type === 'axis'){
+                    return this.handle_mapping_axis(gamepad);
+                } else if(this.type === 'button'){
+                    return this.handle_mapping_button(gamepad);
                 }
             }
         }
-
-        function complete_mapping() {
-            mapping_state.button.textContent = mapping_state.button_text
-            // localStorage.setItem('quadrotorGamepadMap', JSON.stringify(controlMap));
-            document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
-            mapping_state = null
-            render_live_view()
+        class Gamepad{
+            constructor(parent, gamepad_interface){
+                const template = document.getElementById('gamepad-template');
+                const clone = template.content.cloneNode(true);
+                parent.appendChild(clone);
+                this.element = parent.lastElementChild;
+                this.gamepad_interface = gamepad_interface;
+                this.mapper = null;
+                this.control_map = {}
+                this.callbacks = {}
+                this.gamepad_index = null
+                window.addEventListener('gamepadconnected', () => {
+                    const gamepad_details = event.gamepad || event;
+                    const status_element = document.getElementById('gamepad-status');
+                    this.gamepad_index = gamepad_details.index;
+                    status_element.textContent = 'Gamepad connected: ' + gamepad_details.id;
+                    status_element.className = 'connected';
+                    document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
+                });
+                for (const channel in gamepad_interface){
+                    const details = gamepad_interface[channel];
+                    const button = document.createElement('button');
+                    // <button class="gamepad-mapping-button" disabled onclick="startMapping('thrust', 'axis', 'up', this)">Map Thrust Axis</button>
+                    button.classList.add('gamepad-mapping-button');
+                    button.classList.add('gamepad-button');
+                    const default_text = `Map ${channel}`
+                    button.textContent = default_text;
+                    button.disabled = true;
+                    button.onclick = () => {
+                        button.textContent = details.type === "button" ? 'Press Button' : `Move ${details.positive_direction === 'up' ? 'Up/Forward' : 'Right'}`;
+                        document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = true; });
+                        button.disabled = false;
+                        const gamepad = this.get_gamepad();
+                        if(this.mapper === null && gamepad !== null){
+                            this.mapper = new Mapper(details.type, channel, gamepad, this.control_map, () => {
+                                button.textContent = default_text
+                                // localStorage.setItem('quadrotorGamepadMap', JSON.stringify(controlMap));
+                                document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
+                                this.mapper = null
+                                this.render_live_view()
+                            });
+                        }
+                    };
+                    document.getElementById("gamepad-button-container").appendChild(button);
+                }
+                this.poll()
+            }
+            get_gamepad(){
+                return this.gamepad_index !== null ? navigator.getGamepads()[this.gamepad_index] : null;
+            }
+            render_live_view(){
+                const gamepad_state = document.getElementById('gamepad-state');
+                gamepad_state.innerHTML = '';
+                this.callbacks = {}
+                for (const control in this.control_map) {
+                    const details = this.control_map[control];
+                    const template = document.getElementById(details.type === 'axis' ? 'gamepad-axis-template' : 'gamepad-button-template');
+                    const clone = template.content.cloneNode(true);
+                    gamepad_state.appendChild(clone);
+                    const name = gamepad_state.lastElementChild.querySelector('.gamepad-controls-name');
+                    name.textContent = control
+                    const element = gamepad_state.lastElementChild
+                    this.callbacks[control] = (value) =>{
+                        const slider = element.querySelector('.gamepad-slider');
+                        const valueDisplay = element.querySelector('.gamepad-value-display');
+                        if (details.type === 'axis') {
+                            slider.value = value;
+                            console.log(`${control} value: ${value}`);
+                            valueDisplay.textContent = value.toFixed(2);
+                        } else {
+                            const buttonIndicator = element.querySelector('.gamepad-button-indicator');
+                            buttonIndicator.style.backgroundColor = value ? '#28a745' : '#ccc';
+                            valueDisplay.textContent = value ? 'Pressed' : 'Released';
+                        }
+                    };
+                }
+            }
+            update_live_view(gamepad){
+                for (const control in this.control_map) {
+                    const details = this.control_map[control];
+                    if(details.index === -1) continue;
+                    const raw_value = gamepad[details.type === 'axis' ? 'axes' : 'buttons'][details.index];
+                    if(details.type === 'axis'){
+                        const value = (raw_value - details.base);
+                        const value_clipped = Math.max(-1, Math.min(1, value));
+                        const value_inverted = details.invert ? -value_clipped : value_clipped;
+                        this.callbacks[control](value_inverted);
+                    }
+                    else{
+                        this.callbacks[control](raw_value.pressed);
+                    }
+                }
+            }
+            poll(){
+                requestAnimationFrame(this.poll.bind(this));
+                const gamepad = this.get_gamepad();
+                if(gamepad){
+                    if(this.mapper){
+                        const should_render = this.mapper.handle_mapping(gamepad);
+                        if(should_render){
+                            this.render_live_view();
+                        }
+                    }
+                    this.update_live_view(gamepad)
+                }
+            }
         }
+        const gamepaddd = new Gamepad(document.body, {
+            "thrust": {
+                type: "axis",
+                positive_direction: "up"
+            }
+        })
+        // function init() {
+        //     const saved = null; //localStorage.getItem('quadrotorGamepadMap');
+        //     if (saved) {
+        //         try {
+        //             const parsed = JSON.parse(saved);
+        //             Object.assign(controlMap, parsed);
+        //         } catch (e) {}
+        //     }
 
-        // function getControlValues(gamepad) {
-        //     const controls = { 
-        //         thrust: 0, roll: 0, pitch: 0, yaw: 0, 
-        //         button1: false, button2: false,
-        //         raw: { thrust: null, roll: null, pitch: null, yaw: null }
-        //     };
-        //     if(isMapping){
-        //         if(axisMappingState.currentIndex !== -1){
-        //             const rawValue = gamepad.axes[axisMappingState.currentIndex];
-        //             controls.raw[mappingType] = rawValue;
-        //             let value = rawValue;
-        //             if (axisMappingState.invert) value = -value;
-        //             controls[mappingType] = (axisMappingState.expectedPositive === 'up') ? (value + 1) / 2 : value;
-        //         }
-        //         return controls
-        //     }
-        //     for (const control of ['thrust', 'roll', 'pitch', 'yaw']) {
-        //         const mapping = controlMap[control];
-        //         if (mapping.type === 'axis' && mapping.index >= 0 && mapping.index < gamepad.axes.length) {
-        //             const rawValue = gamepad.axes[mapping.index];
-        //             controls.raw[control] = rawValue;
-        //             let value = rawValue;
-        //             if (mapping.invert) value = -value; // Apply inversion based on mapping
-        //             controls[control] = (control === 'thrust') ? (value + 1) / 2 : value;
-        //         }
-        //     }
-        //     for (const control of ['button1', 'button2']) {
-        //         const mapping = controlMap[control];
-        //         if (mapping.type === 'button' && mapping.index >= 0 && mapping.index < gamepad.buttons.length) {
-        //             controls[control] = gamepad.buttons[mapping.index].pressed;
-        //         }
-        //     }
-        //     return controls;
         // }
 
-
-        function poll(){
-            requestAnimationFrame(poll);
-            if (!activeGamepad) return;
-            const gamepad = navigator.getGamepads()[activeGamepad.index];
-            if (!gamepad) return;
-            handleMapping(gamepad);
-            update_live_view(gamepad)
-        }
-        poll()
-        window.addEventListener('load', init);
+        // window.addEventListener('load', init);
     </script>
 </body>
 </html>
