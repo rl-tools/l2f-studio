@@ -65,7 +65,7 @@ let model = null
 class Policy{
     constructor(){
         this.step = 0
-        this.states = null
+        this.policy_states = null
     }
     get_observation(state, obs){
         let vehicle_state = null
@@ -110,8 +110,8 @@ class Policy{
         }
     }
     evaluate_step(states) {
-        if(!this.states || this.states.length !== states.length){
-            this.states = states.map(() => null)
+        if(!this.policy_states || this.policy_states.length !== states.length){
+            this.policy_states = states.map(() => null)
         }
         return states.map((state, i) => {
             state.observe()
@@ -121,17 +121,18 @@ class Policy{
             input_offset.forEach((x, i) => {
                 input._data[0][i] = input._data[0][i] - x
             })
-            const [output, new_state] = model.evaluate_step(input, this.states[i])
-            this.states[i] = new_state
+            const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
+            this.policy_states[i] = new_state
             this.step += 1
             return output.valueOf()[0]
         })
     }
     reset() {
         this.step = 0
-        this.states = null
+        this.policy_states = null
     }
 }
+
 
 function arrayBufferToBase64(buffer) {
     const bytes = new Uint8Array(buffer);
