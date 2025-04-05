@@ -27,6 +27,7 @@ class Mapper{
                 if (diff > maxDiff) {
                     maxDiff = diff;
                     this.live_index = i;
+                    this.invert = (gamepad.axes[i] - this.base_values[i]) < 0;
                     this.base = this.base_values[i];
                 }
                 if (diff > 0.5) {
