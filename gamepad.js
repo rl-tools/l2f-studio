@@ -83,11 +83,11 @@ class Mapper{
     }
 }
 export class Gamepad{
-    constructor(parent, gamepad_interface){
-        const template = document.getElementById('gamepad-template');
-        const clone = template.content.cloneNode(true);
-        parent.appendChild(clone);
-        this.element = parent.lastElementChild;
+    constructor(element, gamepad_interface){
+        // const template = document.getElementById('gamepad-template');
+        // const clone = template.content.cloneNode(true);
+        // parent.appendChild(clone);
+        this.element = element; //parent.lastElementChild;
         this.gamepad_interface = gamepad_interface;
         this.mapper = null;
         this.control_map = {}
@@ -117,7 +117,9 @@ export class Gamepad{
             document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = true; });
             this.render_live_view()
         };
-        document.getElementById("gamepad-button-container").appendChild(reset_button);
+        const button_container = document.getElementById("gamepad-button-container")
+        button_container.innerHTML = '';
+        button_container.appendChild(reset_button);
 
 
         for (const channel in gamepad_interface){
@@ -148,7 +150,7 @@ export class Gamepad{
                     });
                 }
             };
-            document.getElementById("gamepad-button-container").appendChild(button);
+            button_container.appendChild(button);
         }
         this.poll()
     }

@@ -3,6 +3,7 @@ import { SimControls } from "./sim_controls.js";
 import { ParameterManager } from "./parameter_manager.js";
 import * as rlt from "rltools"
 import * as math from "mathjs"
+import { Gamepad } from "./gamepad.js"
 
 // import Controller from  "./controller.js"
 
@@ -210,13 +211,42 @@ async function main(){
                 if(event.target.value === "policy"){
                     document.getElementById("policy-container").style.display = "block"
                     document.getElementById("controller-container").style.display = "none"
+                    document.getElementById("gamepad-container").style.display = "none"
                     proxy_controller.policy = new Policy(model)
                 }
-                else{
+                else if(event.target.value === "controller"){
                     document.getElementById("policy-container").style.display = "none"
                     document.getElementById("controller-container").style.display = "block"
+                    document.getElementById("gamepad-container").style.display = "none"
                     const event = new KeyboardEvent("keydown", {key: "Enter"});
                     document.getElementById("controller-code").dispatchEvent(event);
+                }
+                else if(event.target.value === "gamepad"){
+                    document.getElementById("policy-container").style.display = "none"
+                    document.getElementById("controller-container").style.display = "none"
+                    document.getElementById("gamepad-container").style.display = "block"
+                    const parent = document.getElementById("gamepad-container")
+                    const gamepad = new Gamepad(parent, {
+                        "thrust": {
+                            type: "axis",
+                            positive_direction: "Up"
+                        },
+                        "roll": {
+                            type: "axis",
+                            positive_direction: "Right"
+                        },
+                        "pitch": {
+                            type: "axis",
+                            positive_direction: "Forward"
+                        },
+                        "yaw": {
+                            type: "axis",
+                            positive_direction: "Clockwise"
+                        },
+                        "reset": {
+                            type: "button"
+                        },
+                    })
                 }
             });
         });

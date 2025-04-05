@@ -94,6 +94,10 @@
                         <input type="radio" name="choice" value="controller">
                         Controller
                     </label>
+                    <label>
+                        <input type="radio" name="choice" value="gamepad">
+                        Gamepad
+                    </label>
                 </form>
             </div>
             <div id="policy-container" class="controller-container">
@@ -113,11 +117,12 @@
             <div id="controller-container" class="controller-container">
                 <textarea id="controller-code" rows=10 value="(x, u) => x.map((v, i) => v + u[i] * 0.1)"></textarea>
             </div>
-            <div id="gamepad-container">
+            <div id="gamepad-container" class="controller-container">
+                <link rel="stylesheet" href="./gamepad.css">
                 <template id="gamepad-axis-template">
                     <div class="gamepad-controls-row">
                         <div class="gamepad-controls-name gamepad-controls-cell"></div>
-                        <div class="gamepad-slider-container gamepad-controls-cell"><input type="range" class="gamepad-slider" min="-1" max="1" value="0" step="0.01" disabled></div>
+                        <div class="gamepad-slider-container gamepad-controls-cell"><input type="range" class="gamepad-slider" min="-1" max="1" value="0" step="0.01"></div>
                         <div class="gamepad-value-display gamepad-controls-cell">0.00</div>
                     </div>
                 </template>
@@ -129,13 +134,13 @@
                         <div></div>
                     </div>
                 </template>
-                <template id="gamepad-template">
-                    <div id="gamepad-status" class="gamepad-disconnected">No gamepad connected</div>
-                    <div id="gamepad-state">
+                <div id="gamepad-status" class="gamepad-disconnected">No gamepad connected</div>
+                <div id="gamepad-controls">
+                    <div id="gamepad-state"></div>
+                    <div id="gamepad-button-container-container">
+                        <div id="gamepad-button-container"></div>
                     </div>
-                    <div id="gamepad-button-container">
-                    </div>
-                </template>
+                </div>
             </div>
 
         </div>
