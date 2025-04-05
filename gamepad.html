@@ -93,6 +93,12 @@
         .gamepad-main-button {
             grid-column: span 2;
         }
+        .gamepad-reset-button{
+            background-color: #cb2c2c;
+        }
+        .gamepad-reset-button:hover {
+            background-color: #942121;
+        }
         .gamepad-separator {
             height: 1px;
             background-color: #ddd;
@@ -230,14 +236,32 @@
                 this.callbacks = {}
                 this.gamepad_index = null
                 this.gamepad_poller = null
-                // window.addEventListener('gamepadconnected', () => {
-                //     const gamepad_details = event.gamepad || event;
-                //     const status_element = document.getElementById('gamepad-status');
-                //     this.gamepad_index = gamepad_details.index;
-                //     status_element.textContent = 'Gamepad connected: ' + gamepad_details.id;
-                //     status_element.className = 'gamepad-connected';
-                //     document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
-                // });
+                const reset_button = document.createElement('button');
+                reset_button.classList.add('gamepad-mapping-button');
+                reset_button.classList.add('gamepad-button');
+                reset_button.classList.add('gamepad-reset-button')
+                reset_button.textContent = "Reset";
+                reset_button.onclick = () => {
+                    const gamepad = this.get_gamepad();
+                    if(gamepad === null) return;
+                    this.gamepad_index = null
+                    this.control_map = {}
+                    this.callbacks = {}
+                    const status_element = document.getElementById('gamepad-status');
+                    status_element.textContent = 'No gamepad connected';
+                    status_element.className = 'gamepad-disconnected';
+                    let gamepad_config = localStorage.getItem('gamepad_config');
+                    gamepad_config = gamepad_config !== null ? JSON.parse(gamepad_config) : null;
+                    if(gamepad_config !== null){
+                        delete gamepad_config[gamepad.id];
+                        localStorage.setItem('gamepad_config', JSON.stringify(gamepad_config));
+                    }
+                    document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = true; });
+                    this.render_live_view()
+                };
+                document.getElementById("gamepad-button-container").appendChild(reset_button);
+
+
                 for (const channel in gamepad_interface){
                     const details = gamepad_interface[channel];
                     const button = document.createElement('button');
@@ -258,6 +282,10 @@
                                 // localStorage.setItem('quadrotorGamepadMap', JSON.stringify(controlMap));
                                 document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
                                 this.mapper = null
+                                let gamepad_config = localStorage.getItem('gamepad_config');
+                                gamepad_config = gamepad_config !== null ? JSON.parse(gamepad_config) : {};
+                                gamepad_config[gamepad.id] = this.control_map;
+                                localStorage.setItem('gamepad_config', JSON.stringify(gamepad_config));
                                 this.render_live_view()
                             });
                         }
@@ -278,6 +306,13 @@
                             status_element.textContent = 'Gamepad connected: ' + gp.id;
                             status_element.className = 'gamepad-connected';
                             document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
+                            let gamepad_config = localStorage.getItem('gamepad_config');
+                            gamepad_config = gamepad_config !== null ? JSON.parse(gamepad_config) : {};
+                            gamepad_config = gp.id in gamepad_config ? gamepad_config[gp.id] : null;
+                            if(gamepad_config !== null){
+                                this.control_map = gamepad_config;
+                                this.render_live_view()
+                            }
                             break;
                         }
                     }
