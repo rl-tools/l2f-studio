@@ -122,7 +122,13 @@
                 <template id="gamepad-axis-template">
                     <div class="gamepad-controls-row">
                         <div class="gamepad-controls-name gamepad-controls-cell"></div>
-                        <div class="gamepad-slider-container gamepad-controls-cell"><input type="range" class="gamepad-slider" min="-1" max="1" value="0" step="0.01"></div>
+                        <div class="gamepad-slider-container gamepad-controls-cell">
+                            <input type="range" class="gamepad-slider gamepad-slider-status" min="-1" max="1" value="0" step="0.01">
+                            <input type="range" class="gamepad-slider gamepad-slider-expo" min="0" max="1" step="0.01" value="0.0">
+                        </div>
+                        <div class="gamepad-expo-display gamepad-controls-cell">
+                            <canvas class="gamepad-expo-canvas" width="70" height="35"></canvas>
+                        </div>
                         <div class="gamepad-value-display gamepad-controls-cell">0.00</div>
                     </div>
                 </template>
@@ -130,11 +136,12 @@
                     <div class="gamepad-controls-row">
                         <div class="gamepad-controls-name gamepad-controls-cell"></div>
                         <div class="gamepad-controls-cell"><div class="gamepad-button-indicator"></div></div>
+                        <div class="gamepad-controls-cell"></div>
                         <div class="gamepad-value-display gamepad-controls-cell">Released</div>
                         <div></div>
                     </div>
                 </template>
-                <div id="gamepad-status" class="gamepad-disconnected">No gamepad connected</div>
+                <div id="gamepad-status" class="gamepad-disconnected">No gamepad connected (please press button or move axis to connect)</div>
                 <div id="gamepad-controls">
                     <div id="gamepad-state"></div>
                     <div id="gamepad-button-container-container">

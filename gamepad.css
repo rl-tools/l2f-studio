@@ -38,7 +38,11 @@
 .gamepad-slider {
     width: 100px;
     height: 10px;
+}
+.gamepad-slider-status {
     pointer-events: none;
+}
+.gamepad-slider-expo {
 }
 .gamepad-button-indicator {
     width: 20px;
@@ -48,6 +52,7 @@
 }
 #gamepad-button-container-container {
     display: flex;
+    flex: 1;
     flex-direction: row;
     justify-content: center;
     align-items: center;

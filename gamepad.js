@@ -92,8 +92,12 @@ export class Gamepad{
         this.mapper = null;
         this.control_map = {}
         this.callbacks = {}
+        this.expo_sliders = {}
         this.gamepad_index = null
         this.gamepad_poller = null
+        this.expo_curve = (x, expo) => {
+            return (1-expo)*x + expo * Math.pow(x, 3)
+        }
         const reset_button = document.createElement('button');
         reset_button.classList.add('gamepad-mapping-button');
         reset_button.classList.add('gamepad-button');
@@ -184,6 +188,7 @@ export class Gamepad{
         const gamepad_state = document.getElementById('gamepad-state');
         gamepad_state.innerHTML = '';
         this.callbacks = {}
+        this.expo_sliders = {}
         for (const control in this.control_map){
             const details = this.control_map[control];
             const template = document.getElementById(details.type === 'axis' ? 'gamepad-axis-template' : 'gamepad-button-template');
@@ -192,35 +197,27 @@ export class Gamepad{
             const name = gamepad_state.lastElementChild.querySelector('.gamepad-controls-name');
             name.textContent = control
             const element = gamepad_state.lastElementChild
-            this.callbacks[control] = (value) =>{
+            let expo_plot = null
+            if(details.type === 'axis'){
+                const expo_canvas = element.querySelector('.gamepad-expo-canvas');
+                this.expo_sliders[control] = element.querySelector('.gamepad-slider-expo');
+                expo_plot = new ExpoPlot(expo_canvas, this.expo_curve);
+            }
+            this.callbacks[control] = (value_raw) =>{
                 const slider = element.querySelector('.gamepad-slider');
                 const valueDisplay = element.querySelector('.gamepad-value-display');
                 if (details.type === 'axis') {
-                    slider.value = value;
-                    console.log(`${control} value: ${value}`);
-                    valueDisplay.textContent = value.toFixed(2);
+                    slider.value = value_raw;
+                    const processed_value = this.expo_curve(value_raw, this.expo_sliders[control].value);
+                    console.log(`${control} value: ${processed_value}`);
+                    valueDisplay.textContent = processed_value.toFixed(2);
+                    expo_plot.draw(value_raw, this.expo_sliders[control].value);
                 } else {
                     const buttonIndicator = element.querySelector('.gamepad-button-indicator');
-                    buttonIndicator.style.backgroundColor = value ? '#28a745' : '#ccc';
-                    valueDisplay.textContent = value ? 'Pressed' : 'Released';
+                    buttonIndicator.style.backgroundColor = value_raw ? '#28a745' : '#ccc';
+                    valueDisplay.textContent = value_raw ? 'Pressed' : 'Released';
                 }
             };
-        }
-    }
-    update_live_view(gamepad){
-        for (const control in this.control_map) {
-            const details = this.control_map[control];
-            if(details.index === -1) continue;
-            const raw_value = gamepad[details.type === 'axis' ? 'axes' : 'buttons'][details.index];
-            if(details.type === 'axis'){
-                const value = (raw_value - details.base);
-                const value_clipped = Math.max(-1, Math.min(1, value));
-                const value_inverted = details.invert ? -value_clipped : value_clipped;
-                this.callbacks[control](value_inverted);
-            }
-            else{
-                this.callbacks[control](raw_value.pressed);
-            }
         }
     }
     poll(){
@@ -233,7 +230,6 @@ export class Gamepad{
                     this.render_live_view();
                 }
             }
-            this.update_live_view(gamepad)
             if((Object.keys(this.gamepad_interface).every((key) => key in this.control_map && this.control_map[key].index !== -1))){
                 const output = {}
                 for(const control in this.control_map){
@@ -243,10 +239,13 @@ export class Gamepad{
                         const value = (raw_value - details.base);
                         const value_clipped = Math.max(-1, Math.min(1, value));
                         const value_inverted = details.invert ? -value_clipped : value_clipped;
-                        output[control] = value_inverted;
+                        const value_transformed = this.expo_curve(value_inverted, this.expo_sliders[control].value);
+                        output[control] = value_transformed;
+                        this.callbacks[control](value_inverted);
                     }
                     else{
                         output[control] = raw_value.pressed;
+                        this.callbacks[control](raw_value.pressed);
                     }
                 }
                 for(const listener of this.listeners){
@@ -257,5 +256,62 @@ export class Gamepad{
     }
     addListener(listener){
         this.listeners.push(listener);
+    }
+}
+
+
+class ExpoPlot{
+    constructor(canvas, mapping){
+        this.canvas = canvas
+        this.mapping = mapping
+        const ctx = canvas.getContext("2d");
+    }
+    draw(x, expo) {
+        const ctx = this.canvas.getContext("2d");
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Draw axes
+        ctx.strokeStyle = "#ccc";
+        ctx.beginPath();
+        ctx.moveTo(0, h / 2);
+        ctx.lineTo(w, h / 2);
+        ctx.moveTo(w / 2, 0);
+        ctx.lineTo(w / 2, h);
+        ctx.stroke();
+
+        // Draw expo curve
+        ctx.strokeStyle = "blue";
+        ctx.beginPath();
+        for (let i = 0; i <= w; i++) {
+            const x_norm = (i / w) * 2 - 1; // normalize to [-1, 1]
+            const y_val = this.mapping(x_norm, expo);
+            const y_pix = h / 2 - y_val * (h / 2);
+            if (i === 0) ctx.moveTo(i, y_pix);
+            else ctx.lineTo(i, y_pix);
+        }
+        ctx.stroke();
+
+        // Draw current position dot and projections
+        const x_pix = w / 2 + x * (w / 2);
+        const y_val = this.mapping(x, expo);
+        const y_pix = h / 2 - y_val * (h / 2);
+
+        ctx.strokeStyle = "#999";
+        ctx.setLineDash([4, 2]);
+        ctx.beginPath();
+        ctx.moveTo(x_pix, h / 2);
+        ctx.lineTo(x_pix, y_pix);
+        ctx.moveTo(w / 2, y_pix);
+        ctx.lineTo(x_pix, y_pix);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(x_pix, y_pix, 4, 0, 2 * Math.PI);
+        ctx.fill();
     }
 }
