@@ -57,7 +57,8 @@ class Mapper{
             invert: this.invert,
             base: this.base,
             max_deflection: this.max_deflection,
-            finished: this.finished
+            finished: this.finished,
+            expo: 0
         };
         if(this.finished){
             this.completion_handler();
@@ -154,7 +155,10 @@ export class Gamepad{
         let gamepad_config = localStorage.getItem('gamepad_config');
         gamepad_config = gamepad_config !== null ? JSON.parse(gamepad_config) : {};
         gamepad_config = id in gamepad_config ? gamepad_config[id] : null;
-        return gamepad_config
+        if(gamepad_config !== null){
+            this.control_map = gamepad_config;
+            this.render_live_view()
+        }
     }
     reset_config(id){
         let gamepad_config = localStorage.getItem('gamepad_config');
@@ -173,7 +177,6 @@ export class Gamepad{
     get_gamepad(){
         if(this.gamepad_index === null){
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let new_gamepad = null
             for (let i = 0; i < gamepads.length; i++) {
                 const gp = gamepads[i];
                 if(gp){
@@ -182,11 +185,7 @@ export class Gamepad{
                     status_element.textContent = 'Gamepad connected: ' + gp.id;
                     status_element.className = 'gamepad-connected';
                     document.querySelectorAll('.gamepad-mapping-button').forEach((btn) => { btn.disabled = false; });
-                    const gamepad_config = this.load_config(gp.id);
-                    if(gamepad_config !== null){
-                        this.control_map = gamepad_config;
-                        this.render_live_view()
-                    }
+                    this.load_config(gp.id);
                     break;
                 }
             }
@@ -211,8 +210,10 @@ export class Gamepad{
                 const expo_canvas = element.querySelector('.gamepad-expo-canvas');
                 const expo_slider = element.querySelector('.gamepad-slider-expo')
                 this.expo_sliders[control] = expo_slider;
+                expo_slider.value = this.control_map[control].expo
                 expo_slider.addEventListener('input', (event) => {
-                    
+                    this.control_map[control].expo = event.target.value;
+                    this.save_config(this.get_gamepad().id);
                 })
                 expo_plot = new ExpoPlot(expo_canvas, this.expo_curve);
             }
