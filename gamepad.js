@@ -230,24 +230,25 @@ export class Gamepad{
                     this.render_live_view();
                 }
             }
-            if((Object.keys(this.gamepad_interface).every((key) => key in this.control_map && this.control_map[key].index !== -1))){
-                const output = {}
-                for(const control in this.control_map){
-                    const details = this.control_map[control];
-                    const raw_value = gamepad[details.type === 'axis' ? 'axes' : 'buttons'][details.index];
-                    if(details.type === 'axis'){
-                        const value = (raw_value - details.base);
-                        const value_clipped = Math.max(-1, Math.min(1, value));
-                        const value_inverted = details.invert ? -value_clipped : value_clipped;
-                        const value_transformed = this.expo_curve(value_inverted, this.expo_sliders[control].value);
-                        output[control] = value_transformed;
-                        this.callbacks[control](value_inverted);
-                    }
-                    else{
-                        output[control] = raw_value.pressed;
-                        this.callbacks[control](raw_value.pressed);
-                    }
+            const output = {}
+            for(const control in this.control_map){
+                const details = this.control_map[control];
+                if(details.index === -1) continue;
+                const raw_value = gamepad[details.type === 'axis' ? 'axes' : 'buttons'][details.index];
+                if(details.type === 'axis'){
+                    const value = (raw_value - details.base);
+                    const value_clipped = Math.max(-1, Math.min(1, value));
+                    const value_inverted = details.invert ? -value_clipped : value_clipped;
+                    const value_transformed = this.expo_curve(value_inverted, this.expo_sliders[control].value);
+                    output[control] = value_transformed;
+                    this.callbacks[control](value_inverted);
                 }
+                else{
+                    output[control] = raw_value.pressed;
+                    this.callbacks[control](raw_value.pressed);
+                }
+            }
+            if((Object.keys(this.gamepad_interface).every((key) => key in output && this.control_map[key].index !== -1))){
                 for(const listener of this.listeners){
                     listener(output);
                 }
