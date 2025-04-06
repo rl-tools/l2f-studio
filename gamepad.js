@@ -15,6 +15,7 @@ class Mapper{
         }
         this.finished = false
         this.completion_handler = completion_handler
+        this.listeners = []
     }
     handle_mapping_axis(gamepad){
         if (!this.active) {
@@ -183,7 +184,7 @@ export class Gamepad{
         const gamepad_state = document.getElementById('gamepad-state');
         gamepad_state.innerHTML = '';
         this.callbacks = {}
-        for (const control in this.control_map) {
+        for (const control in this.control_map){
             const details = this.control_map[control];
             const template = document.getElementById(details.type === 'axis' ? 'gamepad-axis-template' : 'gamepad-button-template');
             const clone = template.content.cloneNode(true);
@@ -233,6 +234,28 @@ export class Gamepad{
                 }
             }
             this.update_live_view(gamepad)
+            if((Object.keys(this.gamepad_interface).map((key) => key in this.control_map && this.control_map[key].index !== -1)).every()){
+                const output = {}
+                for(const control in this.control_map){
+                    const details = this.control_map[control];
+                    const raw_value = gamepad[details.type === 'axis' ? 'axes' : 'buttons'][details.index];
+                    if(details.type === 'axis'){
+                        const value = (raw_value - details.base);
+                        const value_clipped = Math.max(-1, Math.min(1, value));
+                        const value_inverted = details.invert ? -value_clipped : value_clipped;
+                        output[control] = value_inverted;
+                    }
+                    else{
+                        output[control](raw_value.pressed);
+                    }
+                }
+                for(const listener of this.listeners){
+                    listener(output);
+                }
+            }
         }
+    }
+    addListener(listener){
+        this.listeners.push(listener);
     }
 }

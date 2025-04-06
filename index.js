@@ -4,7 +4,7 @@ import { ParameterManager } from "./parameter_manager.js";
 import * as rlt from "rltools"
 import * as math from "mathjs"
 import { Gamepad } from "./gamepad.js"
-
+import { GamepadController } from "./gamepad_controller.js"
 // import Controller from  "./controller.js"
 
 // check url for "file" parameter
