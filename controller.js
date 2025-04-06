@@ -24,8 +24,9 @@ export default class Controller {
 
         const m = params['dynamics']['mass'];
         const g = -params['dynamics']['gravity'][2];
-        const l = 0.028;
-        const k_q = params['dynamics']['rotor_torque_constants'][0];
+        const rp = params['dynamics']['rotor_positions'];
+        const k_m = params['dynamics']['rotor_torque_constants'];
+        const k_m_dir = params['dynamics']['rotor_torque_directions'].map(v => v[2]); // only considering the z direction
         const [a, b, c] = params['dynamics']['rotor_thrust_coefficients'][0];
 
         const p_des = vec3.fromValues(0, 0, 0);
@@ -46,10 +47,10 @@ export default class Controller {
 
         // note: gl-matrix uses a column-major layout
         const A = mat4.transpose(mat4.create(), mat4.fromValues(
-            1, 1, 1, 1,
-            -l, -l, l, l,
-            -l, l, l, -l,
-            -k_q, k_q, -k_q, k_q
+            1,         1,        1,        1,
+            +rp[0][1], +rp[1][1], +rp[2][1], +rp[3][1], // positive y rotor displacement causes positive x/roll 
+            -rp[0][0], -rp[1][0], -rp[2][0], -rp[3][0], // positive x rotor displacement causes negative y/pitch
+            k_m_dir[0]*k_m[0], k_m_dir[1]*k_m[1], k_m_dir[2]*k_m[2], k_m_dir[3]*k_m[3]
         ));
         const A_inv = mat4.invert(mat4.create(), A);
 
