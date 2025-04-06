@@ -3,6 +3,7 @@ export class GamepadController{
     constructor(gamepad){
         this.actions = null
         this.actions_time = null
+        this.k_omega = 0.001;
         gamepad.addListener((output) => {
             this.actions = output
             this.actions_time = performance.now()
@@ -13,20 +14,31 @@ export class GamepadController{
             const state = JSON.parse(state_binding.get_state());
             const params = JSON.parse(state_binding.get_parameters());
 
-            const temp = vec3.create();
-            vec3.scale(temp, omega, -this.k_omega);
-            vec3.add(tau, tau, temp);
+            const rp = params['dynamics']['rotor_positions'];
+            const k_m = params['dynamics']['rotor_torque_constants'];
+            const k_m_dir = params['dynamics']['rotor_torque_directions'].map(v => v[2]); // only considering the z direction
+            const [a, b, c] = params['dynamics']['rotor_thrust_coefficients'][0];
 
-            const l = 0.028;
-            const k_q = params['dynamics']['rotor_torque_constants'][0];
+            const omega = vec3.fromValues(...state['angular_velocity']);
+
+            const omega_range = [1.5, 1.5, -1]; // yaw command is clockwise
+            const max_thrust = params["dynamics"]["rotor_thrust_coefficients"].map(tc => tc.reduce((a, c, i) => a + c * Math.pow(params.dynamics.action_limit.max, i), 0)).reduce((a, c) => a + c, 0);
+            const omega_des_array = this.actions !== null ? ["roll", "pitch", "yaw"].map((k, i) => this.actions[k] * omega_range[i]) : [0, 0, 0];
+            const omega_des = vec3.fromValues(...omega_des_array);
+
+            const omega_error = vec3.subtract(vec3.create(), omega, omega_des);
+            const tau = vec3.create();
+            vec3.scale(tau, omega_error, -this.k_omega);
+
+            const T = this.actions !== null ? (this.actions["thrust"] + 1) / 2 * max_thrust : 0;
 
             const controlInputs = vec4.fromValues(T, tau[0], tau[1], tau[2]);
 
             const A = mat4.transpose(mat4.create(), mat4.fromValues(
-                1, 1, 1, 1,
-                -l, -l, l, l,
-                -l, l, l, -l,
-                -k_q, k_q, -k_q, k_q
+                1,         1,         1,         1,
+                +rp[0][1], +rp[1][1], +rp[2][1], +rp[3][1], // positive y rotor displacement causes positive x/roll 
+                -rp[0][0], -rp[1][0], -rp[2][0], -rp[3][0], // positive x rotor displacement causes negative y/pitch
+                k_m_dir[0]*k_m[0], k_m_dir[1]*k_m[1], k_m_dir[2]*k_m[2], k_m_dir[3]*k_m[3]
             ));
             const A_inv = mat4.invert(mat4.create(), A);
 

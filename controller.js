@@ -47,7 +47,7 @@ export default class Controller {
 
         // note: gl-matrix uses a column-major layout
         const A = mat4.transpose(mat4.create(), mat4.fromValues(
-            1,         1,        1,        1,
+            1,         1,         1,         1,
             +rp[0][1], +rp[1][1], +rp[2][1], +rp[3][1], // positive y rotor displacement causes positive x/roll 
             -rp[0][0], -rp[1][0], -rp[2][0], -rp[3][0], // positive x rotor displacement causes negative y/pitch
             k_m_dir[0]*k_m[0], k_m_dir[1]*k_m[1], k_m_dir[2]*k_m[2], k_m_dir[3]*k_m[3]

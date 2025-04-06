@@ -248,9 +248,19 @@ async function main(){
                             type: "button"
                         },
                     })
+                    proxy_controller.policy = new GamepadController(gamepad)
+                    gamepad.addListener((output) => {
+                        if(output["reset"] === true){
+                            const button = document.getElementById("initial-states")
+                            button.dispatchEvent(new Event('click'));
+                        }
+                    })
                 }
             });
         });
+        const gamepadRadio = document.querySelector('input[name="choice"][value="gamepad"]');
+        gamepadRadio.checked = true;
+        gamepadRadio.dispatchEvent(new Event('change'));
     })
     document.getElementById("controller-code").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
@@ -358,6 +368,7 @@ async function main(){
             reader.readAsText(file);
         }
     })
+
 }
 
 document.addEventListener("DOMContentLoaded", main)

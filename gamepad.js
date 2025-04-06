@@ -234,7 +234,7 @@ export class Gamepad{
                 }
             }
             this.update_live_view(gamepad)
-            if((Object.keys(this.gamepad_interface).map((key) => key in this.control_map && this.control_map[key].index !== -1)).every()){
+            if((Object.keys(this.gamepad_interface).every((key) => key in this.control_map && this.control_map[key].index !== -1))){
                 const output = {}
                 for(const control in this.control_map){
                     const details = this.control_map[control];
@@ -246,7 +246,7 @@ export class Gamepad{
                         output[control] = value_inverted;
                     }
                     else{
-                        output[control](raw_value.pressed);
+                        output[control] = raw_value.pressed;
                     }
                 }
                 for(const listener of this.listeners){
