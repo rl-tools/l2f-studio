@@ -15,7 +15,6 @@ class Mapper{
         }
         this.finished = false
         this.completion_handler = completion_handler
-        this.listeners = []
     }
     handle_mapping_axis(gamepad){
         if (!this.active) {
@@ -153,6 +152,7 @@ export class Gamepad{
             };
             button_container.appendChild(button);
         }
+        this.listeners = []
         this.poll()
     }
     get_gamepad(){
