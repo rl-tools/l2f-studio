@@ -173,6 +173,7 @@ async function main(){
         const trajectory_class = trajectories[event.target.value]
         trajectory = new trajectory_class()
 
+
         const trajectory_options_container = document.getElementById("reference-trajectory-options")
         trajectory_options_container.innerHTML = ""
         const trajectory_option_template = document.getElementById("reference-trajectory-option-template")
@@ -199,6 +200,10 @@ async function main(){
         }
     })
     trajectory_select.dispatchEvent(new Event("change"))
+    document.getElementById("reference-trajectory-reset").addEventListener("click", () => {
+        trajectory_select.dispatchEvent(new Event("change"))
+
+    })
 
     document.getElementById("default-checkpoint-btn").addEventListener("click", async () => {
         load_model(file_url)

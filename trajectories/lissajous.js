@@ -1,17 +1,10 @@
-
-export class Lissajous{
+import { Trajectory } from "./base.js"
+export class Lissajous extends Trajectory{
     constructor(){
-        this.parameters = {
+        super({
             "period": {"range": [1, 15], "default": 10},
             "scale": {"range": [0, 5], "default": 0.1},
-        }
-        this.parameter_values = {}
-        for(const [name, param] of Object.entries(this.parameters)){
-            this.parameter_values[name] = param.default
-        }
-    }
-    set_parameter(name, value){
-        this.parameter_values[name] = value
+        })
     }
     evaluate(t){
         const scale = this.parameter_values.scale

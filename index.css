@@ -247,3 +247,8 @@ canvas{
 #controller-code{
     min-width: 700px;
 }
+
+#reference-trajectory-options{
+    display:flex;
+    flex-wrap: wrap;
+}
