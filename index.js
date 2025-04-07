@@ -5,6 +5,8 @@ import * as rlt from "rltools"
 import * as math from "mathjs"
 import { Gamepad } from "./gamepad.js"
 import { GamepadController } from "./gamepad_controller.js"
+import { Position } from "./trajectories/position.js"
+import { Lissajous } from "./trajectories/lissajous.js"
 // import Controller from  "./controller.js"
 
 // check url for "file" parameter
@@ -14,22 +16,6 @@ const file_url = file ? file : "./blob/checkpoint.h5"
 
 let proxy_controller = null
 
-function lissajous(t){
-    const scale = 0.5
-    const duration = 10
-    const A = 1
-    const B = 0.5
-    const progress = t * 2 * Math.PI / duration
-    const d_progress = 2 * Math.PI / duration
-    const x = scale * Math.sin(A * progress)
-    const y = scale * Math.sin(B * progress)
-    const vx = scale * Math.cos(A * progress) * A * d_progress
-    const vy = scale * Math.cos(B * progress) * B * d_progress
-    return [x, y, 0, vx, vy, 0]
-}
-function default_trajectory(t){
-    return [0, 0, 0, 0, 0, 0]
-}
 
 class ProxyController{
     constructor(current_policy){
@@ -62,6 +48,7 @@ class MultiController{
 }
 
 let model = null
+let trajectory = null
 class Policy{
     constructor(){
         this.step = 0
@@ -113,17 +100,17 @@ class Policy{
         if(!this.policy_states || this.policy_states.length !== states.length){
             this.policy_states = states.map(() => null)
         }
+        this.step += 1
         return states.map((state, i) => {
             state.observe()
             const observation_description = document.getElementById("observations").observation
             let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
-            const input_offset = default_trajectory(this.step / 100)
+            const input_offset = trajectory.evaluate(this.step / 100)
             input_offset.forEach((x, i) => {
                 input._data[0][i] = input._data[0][i] - x
             })
             const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
             this.policy_states[i] = new_state
-            this.step += 1
             return output.valueOf()[0]
         })
     }
@@ -176,6 +163,43 @@ async function load_model(checkpoint){
 }
 
 async function main(){
+    const trajectory_select = document.getElementById("reference-trajectory")
+    const trajectories = {"Position": Position, "Lissajous": Lissajous}
+    trajectory_select.innerHTML = ""
+    for (const name in trajectories) {
+        trajectory_select.innerHTML += `<option value="${name}">${name}</option>`
+    }
+    trajectory_select.addEventListener("change", (event) => {
+        const trajectory_class = trajectories[event.target.value]
+        trajectory = new trajectory_class()
+
+        const trajectory_options_container = document.getElementById("reference-trajectory-options")
+        trajectory_options_container.innerHTML = ""
+        const trajectory_option_template = document.getElementById("reference-trajectory-option-template")
+
+        for (const [key, config] of Object.entries(trajectory.parameters)) {
+            const template = trajectory_option_template.content.cloneNode(true)
+
+            const labels = template.querySelectorAll(".control-container-label")
+            labels[0].textContent = key
+            labels[1].textContent = config.default
+
+            const slider = template.querySelector("input[type=range]")
+            slider.min = config.range[0]
+            slider.max = config.range[1]
+            slider.step = 0.01
+            slider.value = config.default
+
+            slider.addEventListener("input", () => {
+                labels[1].textContent = slider.value
+                trajectory.set_parameter(key, parseFloat(slider.value))
+            })
+
+            trajectory_options_container.appendChild(template)
+        }
+    })
+    trajectory_select.dispatchEvent(new Event("change"))
+
     document.getElementById("default-checkpoint-btn").addEventListener("click", async () => {
         load_model(file_url)
     })
