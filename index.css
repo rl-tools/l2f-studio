@@ -218,6 +218,10 @@ canvas{
     margin-block-end: 0em;
     white-space: nowrap;
 }
+.controller-selector-label{
+    white-space: nowrap;
+    width: auto;
+}
 
 
 #policy-container{

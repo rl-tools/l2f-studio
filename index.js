@@ -258,9 +258,9 @@ async function main(){
                 }
             });
         });
-        const gamepadRadio = document.querySelector('input[name="choice"][value="gamepad"]');
-        gamepadRadio.checked = true;
-        gamepadRadio.dispatchEvent(new Event('change'));
+        // const gamepadRadio = document.querySelector('input[name="choice"][value="gamepad"]');
+        // gamepadRadio.checked = true;
+        // gamepadRadio.dispatchEvent(new Event('change'));
     })
     document.getElementById("controller-code").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
