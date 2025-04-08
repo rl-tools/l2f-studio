@@ -50,13 +50,15 @@ class MultiController {
         this.controllers.forEach(controller => controller.reset())
     }
     get_reference(states){
-        console.assert(this.controllers.length == states.length)
-        return this.controllers.map((c) => c.get_reference())
+        // console.assert(this.controllers.length == states.length)
+        // return this.controllers.map((c) => c.get_reference())
+        return null
     }
 }
 
 let model = null
 let trajectory = null
+let trajectory_x_offset = 0
 class Policy{
     constructor() {
         this.step = 0
@@ -87,7 +89,7 @@ class Policy{
                 if (delay === 0) {
                     return full_observation.slice(15, 18)
                 } else {
-                    const s = get_state()
+                    const s = get_state(0)
                     return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
                 }
             case obs.startsWith("ActionHistory"):
@@ -109,12 +111,13 @@ class Policy{
             this.policy_states = states.map(() => null)
         }
         this.step += 1
+        const references = this.get_reference(states)
         return states.map((state, i) => {
             state.observe()
             const observation_description = document.getElementById("observations").observation
             let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
-            const input_offset = this._get_reference()
-            input_offset.forEach((x, i) => {
+            const reference = references[i]
+            reference.forEach((x, i) => {
                 input._data[0][i] = input._data[0][i] - x
             })
             const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
@@ -131,7 +134,11 @@ class Policy{
     }
     get_reference(states){
         const ref = this._get_reference()
-        return states.map(() => ref)
+        return states.map((_, i) => {
+            const new_ref = ref.slice()
+            new_ref[0] += trajectory_x_offset * i
+            return new_ref
+        })
     }
 }
 
@@ -178,6 +185,13 @@ async function load_model(checkpoint) {
 }
 
 async function main() {
+    const trajectory_x_offset_container = document.getElementById("reference-trajectory-offset-container")
+    const trajectory_x_offset_slider = trajectory_x_offset_container.querySelector("input[type=range]")
+    const trajectory_x_offset_label = trajectory_x_offset_container.querySelectorAll(".control-container-label")[1]
+    trajectory_x_offset_slider.addEventListener("input", (event) => {
+        trajectory_x_offset = parseFloat(event.target.value)
+        trajectory_x_offset_label.textContent = trajectory_x_offset.toFixed(2)
+    })
     const trajectory_select = document.getElementById("reference-trajectory")
     const trajectories = { "Position": Position, "Lissajous": Lissajous, "Langevin": SecondOrderLangevin}
     trajectory_select.innerHTML = ""

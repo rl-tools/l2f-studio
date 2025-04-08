@@ -116,20 +116,27 @@ export class L2F{
     simulate_step(){
         const actions = this.policy.evaluate_step(this.states)
         const references = this.policy.get_reference(this.states)
-        if(this.references === null){
-            // create three.js reference ball
-            this.references_ui = references.map((reference, i) => {
-                const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 20, 32, 32);
-                const material = new THREE.MeshStandardMaterial({ color: 0xff4444 });
-                const ball = new THREE.Mesh(geometry, material);
-                const reference_ui_objects = this.ui_state.simulator.add(ball)
-                return ball
+        if(references !== null){
+            if(this.references === null || this.references.length !== references.length){
+                // create three.js reference ball
+                if(this.references !== null){
+                    this.references_ui.forEach(ball => {
+                        this.ui_state.simulator.remove(ball)
+                    })
+                }
+                this.references_ui = references.map((reference, i) => {
+                    const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 20, 32, 32);
+                    const material = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+                    const ball = new THREE.Mesh(geometry, material);
+                    const reference_ui_objects = this.ui_state.simulator.add(ball)
+                    return ball
+                })
+            }
+            this.references = references
+            this.references.forEach((reference, i) => {
+                this.references_ui[i].position.set(reference[0], reference[1], reference[2])
             })
         }
-        this.references = references
-        this.references.forEach((reference, i) => {
-            this.references_ui[i].position.set(reference[0], reference[1], reference[2])
-        })
         console.assert(actions.length === this.states.length, "Action dimension mismatch")
         this.states.forEach((state, i) => {
             const action = actions[i]
