@@ -248,6 +248,9 @@ canvas{
     min-width: 700px;
 }
 
+#reference-trajectory-container .control-container-label:first-of-type{
+    cursor: pointer;
+}
 #reference-trajectory-options{
     display:flex;
     flex-wrap: wrap;

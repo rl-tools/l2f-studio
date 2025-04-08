@@ -58,7 +58,8 @@ class MultiController {
 
 let model = null
 let trajectory = null
-let trajectory_x_offset = 0
+let trajectory_offset = 0
+let trajectory_offset_axis = 0
 class Policy{
     constructor() {
         this.step = 0
@@ -136,7 +137,7 @@ class Policy{
         const ref = this._get_reference()
         return states.map((_, i) => {
             const new_ref = ref.slice()
-            new_ref[0] += trajectory_x_offset * i
+            new_ref[trajectory_offset_axis] += trajectory_offset * i
             return new_ref
         })
     }
@@ -185,12 +186,34 @@ async function load_model(checkpoint) {
 }
 
 async function main() {
-    const trajectory_x_offset_container = document.getElementById("reference-trajectory-offset-container")
-    const trajectory_x_offset_slider = trajectory_x_offset_container.querySelector("input[type=range]")
-    const trajectory_x_offset_label = trajectory_x_offset_container.querySelectorAll(".control-container-label")[1]
-    trajectory_x_offset_slider.addEventListener("input", (event) => {
-        trajectory_x_offset = parseFloat(event.target.value)
-        trajectory_x_offset_label.textContent = trajectory_x_offset.toFixed(2)
+    const trajectory_offset_container = document.getElementById("reference-trajectory-offset-container")
+    const trajectory_offset_slider = trajectory_offset_container.querySelector("input[type=range]")
+    const trajectory_offset_label = trajectory_offset_container.querySelectorAll(".control-container-label")[0]
+    trajectory_offset_label.addEventListener("click", (event) => {
+        switch(trajectory_offset_label.textContent){
+            case "":
+                trajectory_offset_label.textContent = "X Offset"
+                trajectory_offset_axis = 0
+                break;
+            case "X Offset":
+                trajectory_offset_label.textContent = "Y Offset"
+                trajectory_offset_axis = 1
+                break;
+            case "Y Offset":
+                trajectory_offset_label.textContent = "Z Offset"
+                trajectory_offset_axis = 2
+                break;
+            case "Z Offset":
+                trajectory_offset_label.textContent = "X Offset"
+                trajectory_offset_axis = 0
+                break;
+        }
+    })
+    trajectory_offset_label.dispatchEvent(new Event("click"))
+    const trajectory_offset_value = trajectory_offset_container.querySelectorAll(".control-container-label")[1]
+    trajectory_offset_slider.addEventListener("input", (event) => {
+        trajectory_offset = parseFloat(event.target.value)
+        trajectory_offset_value.textContent = trajectory_offset.toFixed(2)
     })
     const trajectory_select = document.getElementById("reference-trajectory")
     const trajectories = { "Position": Position, "Lissajous": Lissajous, "Langevin": SecondOrderLangevin}
