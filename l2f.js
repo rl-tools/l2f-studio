@@ -1,5 +1,6 @@
 // import * as ui from "./ui.js"
 import createModule from "l2f-interface";
+import * as THREE from "three"
 // const DEBUG = true
 const DEBUG = false
 
@@ -82,6 +83,7 @@ export class L2F{
             this.control()
         });
         this.dt = null
+        this.references = null
     }
     async change_num_quadrotors(num){
         const diff = num - this.states.length
@@ -113,6 +115,21 @@ export class L2F{
     }
     simulate_step(){
         const actions = this.policy.evaluate_step(this.states)
+        const references = this.policy.get_reference(this.states)
+        if(this.references === null){
+            // create three.js reference ball
+            this.references_ui = references.map((reference, i) => {
+                const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 20, 32, 32);
+                const material = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+                const ball = new THREE.Mesh(geometry, material);
+                const reference_ui_objects = this.ui_state.simulator.add(ball)
+                return ball
+            })
+        }
+        this.references = references
+        this.references.forEach((reference, i) => {
+            this.references_ui[i].position.set(reference[0], reference[1], reference[2])
+        })
         console.assert(actions.length === this.states.length, "Action dimension mismatch")
         this.states.forEach((state, i) => {
             const action = actions[i]
@@ -176,6 +193,7 @@ export class L2F{
         if(this.render_states && this.render_actions){
             this.ui.render_multi(this.ui_state, this.parameters, this.render_states, this.render_actions)
         }
+        this.ui_state
         requestAnimationFrame(() => this.render());
         if(this.DEBUG){
             this.stats.end()

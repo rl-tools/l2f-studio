@@ -28,6 +28,9 @@ class ProxyController {
     reset() {
         this.policy.reset()
     }
+    get_reference(states){
+        return this.policy.get_reference(states)
+    }
 }
 class MultiController {
     constructor(Controller) {
@@ -46,11 +49,15 @@ class MultiController {
         }
         this.controllers.forEach(controller => controller.reset())
     }
+    get_reference(states){
+        console.assert(this.controllers.length == states.length)
+        return this.controllers.map((c) => c.get_reference())
+    }
 }
 
 let model = null
 let trajectory = null
-class Policy {
+class Policy{
     constructor() {
         this.step = 0
         this.policy_states = null
@@ -106,7 +113,7 @@ class Policy {
             state.observe()
             const observation_description = document.getElementById("observations").observation
             let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
-            const input_offset = trajectory.evaluate(this.step / 100)
+            const input_offset = this._get_reference()
             input_offset.forEach((x, i) => {
                 input._data[0][i] = input._data[0][i] - x
             })
@@ -118,6 +125,13 @@ class Policy {
     reset() {
         this.step = 0
         this.policy_states = null
+    }
+    _get_reference(){
+        return trajectory.evaluate(this.step / 100)
+    }
+    get_reference(states){
+        const ref = this._get_reference()
+        return states.map(() => ref)
     }
 }
 
