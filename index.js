@@ -1,4 +1,4 @@
-import {L2F} from "./l2f.js"
+import { L2F } from "./l2f.js"
 import { SimControls } from "./sim_controls.js";
 import { ParameterManager } from "./parameter_manager.js";
 import * as rlt from "rltools"
@@ -7,6 +7,7 @@ import { Gamepad } from "./gamepad.js"
 import { GamepadController } from "./gamepad_controller.js"
 import { Position } from "./trajectories/position.js"
 import { Lissajous } from "./trajectories/lissajous.js"
+import { SecondOrderLangevin } from "./trajectories/langevin.js"
 // import Controller from  "./controller.js"
 
 // check url for "file" parameter
@@ -17,30 +18,30 @@ const file_url = file ? file : "./blob/checkpoint.h5"
 let proxy_controller = null
 
 
-class ProxyController{
-    constructor(current_policy){
+class ProxyController {
+    constructor(current_policy) {
         this.policy = current_policy
     }
-    evaluate_step(state){
+    evaluate_step(state) {
         return this.policy.evaluate_step(state)
     }
-    reset(){
+    reset() {
         this.policy.reset()
     }
 }
-class MultiController{
-    constructor(Controller){
+class MultiController {
+    constructor(Controller) {
         this.Controller = Controller
         this.controllers = null
     }
-    evaluate_step(state){
-        if(this.controllers === null || this.controllers.length !== state.length){
+    evaluate_step(state) {
+        if (this.controllers === null || this.controllers.length !== state.length) {
             this.controllers = state.map(() => new this.Controller())
         }
         return state.map((state, i) => this.controllers[i].evaluate_step(state))
     }
-    reset(){
-        if(this.controllers === null){
+    reset() {
+        if (this.controllers === null) {
             return
         }
         this.controllers.forEach(controller => controller.reset())
@@ -49,12 +50,12 @@ class MultiController{
 
 let model = null
 let trajectory = null
-class Policy{
-    constructor(){
+class Policy {
+    constructor() {
         this.step = 0
         this.policy_states = null
     }
-    get_observation(state, obs){
+    get_observation(state, obs) {
         let vehicle_state = null
         const full_observation = [...Array(state.observation_dim).keys()].map(i => state.get_observation(i))
         console.assert(full_observation.length > 18, "Observation is smaller than base observation")
@@ -97,7 +98,7 @@ class Policy{
         }
     }
     evaluate_step(states) {
-        if(!this.policy_states || this.policy_states.length !== states.length){
+        if (!this.policy_states || this.policy_states.length !== states.length) {
             this.policy_states = states.map(() => null)
         }
         this.step += 1
@@ -148,8 +149,8 @@ function showStatus(message, isError = false) {
     setTimeout(() => status.style.display = 'none', 3000);
 }
 
-async function load_model(checkpoint){
-    if(typeof checkpoint === "string"){
+async function load_model(checkpoint) {
+    if (typeof checkpoint === "string") {
         checkpoint = await (await fetch(checkpoint)).arrayBuffer()
     }
     localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
@@ -162,9 +163,9 @@ async function load_model(checkpoint){
     proxy_controller.reset()
 }
 
-async function main(){
+async function main() {
     const trajectory_select = document.getElementById("reference-trajectory")
-    const trajectories = {"Position": Position, "Lissajous": Lissajous}
+    const trajectories = { "Position": Position, "Lissajous": Lissajous, "Langevin": SecondOrderLangevin}
     trajectory_select.innerHTML = ""
     for (const name in trajectories) {
         trajectory_select.innerHTML += `<option value="${name}">${name}</option>`
@@ -215,7 +216,7 @@ async function main(){
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = async function(e) {
+            reader.onload = async function (e) {
                 const array_buffer = e.target.result;
                 load_model(array_buffer)
                 console.log("loaded model: ", model.checkpoint_name)
@@ -228,30 +229,30 @@ async function main(){
     document.getElementById("observations").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            document.getElementById("observations").observation  = document.getElementById("observations").value
+            document.getElementById("observations").observation = document.getElementById("observations").value
         }
     })
     const controller_code_loaded = fetch("./controller.js").then(async (response) => {
-        if(response.status !== 200){
+        if (response.status !== 200) {
             console.error("Error loading controller.js: ", response.status)
         }
         document.getElementById("controller-code").value = await response.text()
         document.getElementById("controller-selector-container").querySelectorAll('input[name="choice"]').forEach(radio => {
             radio.addEventListener("change", (event) => {
-                if(event.target.value === "policy"){
+                if (event.target.value === "policy") {
                     document.getElementById("policy-container").style.display = "block"
                     document.getElementById("controller-container").style.display = "none"
                     document.getElementById("gamepad-container").style.display = "none"
                     proxy_controller.policy = new Policy(model)
                 }
-                else if(event.target.value === "controller"){
+                else if (event.target.value === "controller") {
                     document.getElementById("policy-container").style.display = "none"
                     document.getElementById("controller-container").style.display = "block"
                     document.getElementById("gamepad-container").style.display = "none"
-                    const event = new KeyboardEvent("keydown", {key: "Enter"});
+                    const event = new KeyboardEvent("keydown", { key: "Enter" });
                     document.getElementById("controller-code").dispatchEvent(event);
                 }
-                else if(event.target.value === "gamepad"){
+                else if (event.target.value === "gamepad") {
                     document.getElementById("policy-container").style.display = "none"
                     document.getElementById("controller-container").style.display = "none"
                     document.getElementById("gamepad-container").style.display = "block"
@@ -279,7 +280,7 @@ async function main(){
                     })
                     proxy_controller.policy = new GamepadController(gamepad)
                     gamepad.addListener((output) => {
-                        if(output["reset"] === true){
+                        if (output["reset"] === true) {
                             const button = document.getElementById("initial-states")
                             button.dispatchEvent(new Event('click'));
                         }
@@ -321,11 +322,11 @@ async function main(){
     const seed = 12
 
     let checkpoint = null
-    if(localStorage.getItem("checkpoint") !== null){
+    if (localStorage.getItem("checkpoint") !== null) {
         console.log("loading checkpoint from local storage")
         checkpoint = base64ToArrayBuffer(localStorage.getItem("checkpoint"))
     }
-    else{
+    else {
         console.log(`Loading checkpoint from ${file_url}`)
         checkpoint = await (await fetch(file_url)).arrayBuffer()
         localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
@@ -338,7 +339,7 @@ async function main(){
 
     l2f.state_update_callbacks.push((states) => {
         const vehicle_container = document.getElementById("vehicle-list")
-        if(vehicle_container.children.length != states.length){
+        if (vehicle_container.children.length != states.length) {
             const vehicle_template = document.getElementById("vehicle-template")
             vehicle_container.innerHTML = ""
             states.forEach((state, i) => {
@@ -367,6 +368,11 @@ async function main(){
             }
             vehicle.querySelector(".vehicle-position").textContent = state.state.position.map(x => fixed(x, 3)).join(",")
             vehicle.querySelector(".vehicle-action").textContent = state.action.map(x => fixed(x, 2)).join(",")
+            const thrust = state.parameters.dynamics.rotor_thrust_coefficients[0].reduce((a, c) => a + c * Math.pow(state.parameters.dynamics.action_limit.max, i), 0)
+            const t2w = thrust/state.parameters.dynamics.mass
+            const torque = Math.abs(state.parameters.dynamics.rotor_positions[0][0]) * Math.sqrt(2) * thrust
+            const t2i = torque / state.parameters.dynamics.J[0][0]
+            vehicle.querySelector(".vehicle-t2w-t2i").textContent = `${t2w.toFixed(2)} / ${t2i.toFixed(2)}`
             vehicle.title = JSON.stringify(state.parameters.dynamics, null, 2)
         })
 
@@ -379,7 +385,7 @@ async function main(){
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = async function(e) {
+            reader.onload = async function (e) {
                 console.log(`Loaded dynamics from ${file.name}`)
                 const parameters = JSON.parse(e.target.result)
                 const dynamics = parameters.dynamics
@@ -388,7 +394,7 @@ async function main(){
                 const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
                 const ids = []
                 checkboxes.forEach((checkbox, i) => {
-                    if(checkbox.checked){
+                    if (checkbox.checked) {
                         ids.push(i)
                     }
                 })
@@ -427,11 +433,11 @@ document.body.addEventListener('dragleave', () => {
 document.body.addEventListener('drop', e => {
     drag_and_drop_counter = 0;
     drag_and_drop_overlay.style.display = 'none';
-    
+
     const file = e.dataTransfer.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = async function(e) {
+        reader.onload = async function (e) {
             const array_buffer = e.target.result;
             localStorage.setItem("checkpoint", arrayBufferToBase64(array_buffer))
             load_model(array_buffer)
