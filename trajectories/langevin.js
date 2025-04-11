@@ -16,9 +16,10 @@ export class SecondOrderLangevin extends Trajectory {
             // Time step
             dt:     { range: [0.001, 0.1], default: 0.01 },
             // EMA alpha
-            alpha:  { range: [0, 1], default: 0.01 }
+            alpha:  { range: [0, 1], default: 0.01 },
+            // seed
+            seed:  { range: [0, 10000], default: 1337 }
         })
-        this.seed = "1337"
         this.precompute()
     }
 
@@ -37,47 +38,28 @@ export class SecondOrderLangevin extends Trajectory {
 
         this.N = Math.floor(T / dt) + 1
 
-        this.t_array = new Array(this.N)
-        this.X_raw = new Array(this.N)
-        this.Y_raw = new Array(this.N)
-        this.Z_raw = new Array(this.N)
-        this.Vx_raw = new Array(this.N)
-        this.Vy_raw = new Array(this.N)
-        this.Vz_raw = new Array(this.N)
-        this.X = new Array(this.N)
-        this.Y = new Array(this.N)
-        this.Z = new Array(this.N)
-        this.Vx = new Array(this.N)
-        this.Vy = new Array(this.N)
-        this.Vz = new Array(this.N)
+        this.P_raw = Array(this.N).fill().map(() => new Array(3))
+        this.V_raw = Array(this.N).fill().map(() => new Array(3))
+        this.P = Array(this.N).fill().map(() => new Array(3))
+        this.V = Array(this.N).fill().map(() => new Array(3))
 
-        this.X_raw[0] = 0
-        this.Y_raw[0] = 0
-        this.Z_raw[0] = 0
-        this.Vx_raw[0] = 0
-        this.Vy_raw[0] = 0
-        this.Vz_raw[0] = 0
-        this.X[0] = 0
-        this.Y[0] = 0
-        this.Z[0] = 0
-        this.Vx[0] = 0
-        this.Vy[0] = 0
-        this.Vz[0] = 0
-        const rng = new Rand(this.seed)
+        for(let dim_i=0; dim_i < 3; dim_i++){
+            this.P_raw[0][dim_i] = 0
+            this.V_raw[0][dim_i] = 0
+            this.P[0][dim_i] = 0
+            this.V[0][dim_i] = 0
+        }
+        const rng = new Rand(this.parameter_values.seed)
 
-        for (let i = 1; i < this.N; ++i) {
+        for (let step_i = 1; step_i < this.N; ++step_i) {
             for(let dim_i=0; dim_i<3; dim_i++) {
-                const P_raw = dim_i === 0 ? this.X_raw : dim_i === 1 ? this.Y_raw : this.Z_raw;
-                const V_raw = dim_i === 0 ? this.Vx_raw : dim_i === 1 ? this.Vy_raw : this.Vz_raw;
-                const P = dim_i === 0 ? this.X : dim_i === 1 ? this.Y : this.Z;
-                const V = dim_i === 0 ? this.Vx : dim_i === 1 ? this.Vy : this.Vz;
                 const noise = randomGaussian(rng) * Math.sqrt(dt);
-                const v_raw = V_raw[i-1] + (-gamma*V_raw[i-1] - omega*omega*P_raw[i-1]) * dt + sigma * noise;
-                V_raw[i] = v_raw;
-                P_raw[i] = P_raw[i-1] + v_raw * dt;
-                const v_smooth = alpha * v_raw + (1-alpha) * V[i-1];
-                V[i] = v_smooth;
-                P[i] = P[i-1] + v_smooth * dt;
+                const v_raw = this.V_raw[step_i-1][dim_i] + (-gamma*this.V_raw[step_i-1][dim_i] - omega*omega*this.P_raw[step_i-1][dim_i]) * dt + sigma * noise;
+                this.V_raw[step_i][dim_i] = v_raw;
+                this.P_raw[step_i][dim_i] = this.P_raw[step_i-1][dim_i] + v_raw * dt;
+                const v_smooth = alpha * v_raw + (1-alpha) * this.V[step_i-1][dim_i];
+                this.V[step_i][dim_i] = v_smooth;
+                this.P[step_i][dim_i] = this.P[step_i-1][dim_i] + v_smooth * dt;
             }
         }
     }
@@ -89,13 +71,14 @@ export class SecondOrderLangevin extends Trajectory {
         let i = Math.floor(tr / dt)
         if (i < 0) i = 0
         if (i >= this.N) i = this.N - 1
-        const x = this.X[i]
-        const y = this.Y[i]
-        const z = this.Z[i]
-        const vx = this.Vx[i]
-        const vy = this.Vy[i]
-        const vz = this.Vz[i]
-        return [x, y, z, vx, vy, vz]
+        return [
+            this.P[i][0],
+            this.P[i][1],
+            this.P[i][2],
+            this.V[i][0],
+            this.V[i][1],
+            this.V[i][2],
+        ]
     }
 }
 
