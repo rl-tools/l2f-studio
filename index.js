@@ -76,11 +76,11 @@ class Policy{
             return vehicle_state
         }
         switch (true) {
-            case obs === "Position":
+            case obs === "Position" || obs === "TrajectoryTrackingPosition":
                 return full_observation.slice(0, 3)
             case obs === "OrientationRotationMatrix":
                 return full_observation.slice(3, 12)
-            case obs === "LinearVelocity":
+            case obs === "LinearVelocity" || obs === "TrajectoryTrackingLinearVelocity":
                 return full_observation.slice(12, 15)
             case obs === "AngularVelocity":
                 return full_observation.slice(15, 18)

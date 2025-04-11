@@ -32,16 +32,23 @@ namespace builder{
         01.00, // d_action
     };
 
-    struct PARAMETERS_DOMAIN_RANDOMIZATION_OPTIONS{
+    struct DOMAIN_RANDOMIZATION_OPTIONS{
         static constexpr bool ON = false;
         static constexpr bool THRUST_TO_WEIGHT = ON;
         static constexpr bool MASS = ON;
         static constexpr bool TORQUE_TO_INERTIA = ON;
         static constexpr bool MASS_SIZE_DEVIATION = ON;
+        static constexpr bool ROTOR_TORQUE_CONSTANT = ON;
+        static constexpr bool DISTURBANCE_FORCE = ON;
+        static constexpr bool ROTOR_TIME_CONSTANT = ON;
+    };
+
+    struct TRAJECTORY_OPTIONS{
+        static constexpr bool LANGEVIN = false;
     };
 
     using PARAMETERS_SPEC = ParametersBaseSpecification<T, TI, 4, REWARD_FUNCTION>;
-    using PARAMETERS_TYPE = ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, PARAMETERS_DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>;
+    using PARAMETERS_TYPE = ParametersTrajectory<ParametersTrajectorySpecification<T, TI, TRAJECTORY_OPTIONS, ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>>>;
 
     static constexpr typename PARAMETERS_TYPE::Dynamics dynamics = parameters::dynamics::registry<MODEL, PARAMETERS_SPEC>;
     static constexpr TI SIMULATION_FREQUENCY = 100;
@@ -89,17 +96,29 @@ namespace builder{
         typename PARAMETERS_TYPE::Disturbances::UnivariateGaussian{0, 0}, // random_force;
         typename PARAMETERS_TYPE::Disturbances::UnivariateGaussian{0, 0} // random_torque;
     };
-    static constexpr PARAMETERS_TYPE nominal_parameters = {
+    static constexpr typename PARAMETERS_TYPE::Trajectory trajectory = {
+        {0.5, 0.5}, // mixture weights
+        typename PARAMETERS_TYPE::Trajectory::Langevin{
+            1.00, // gamma
+            2.00, // omega
+            0.50, // sigma
+            0.01 // alpha
+        }
+    };
+    static constexpr PARAMETERS_TYPE nominal_parameters ={
         {
             {
-                dynamics,
-                integration,
-                mdp
-            }, // Base
-            disturbances
-        }, // Disturbances
-        domain_randomization
-    }; // DomainRandomization
+                {
+                    dynamics,
+                    integration,
+                    mdp
+                }, // Base
+                disturbances
+            }, // Disturbances
+            domain_randomization
+        }, // DomainRandomization
+        trajectory // Trajectory
+    };
 
     struct ENVIRONMENT_STATIC_PARAMETERS{
         static constexpr TI N_SUBSTEPS = 10;
@@ -109,7 +128,7 @@ namespace builder{
         static constexpr TI ANGULAR_VELOCITY_HISTORY = 5;
         static constexpr TI ANGULAR_VELOCITY_DELAY = 0;
         using STATE_BASE = StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_HISTORY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>;
-        using STATE_TYPE = StateRandomForce<StateSpecification<T, TI, StateRotorsHistory<StateRotorsHistorySpecification<T, TI, ACTION_HISTORY_LENGTH, CLOSED_FORM, StateRandomForce<StateSpecification<T, TI, STATE_BASE>>>>>>;
+        using STATE_TYPE = StateTrajectory<StateSpecification<T, TI, StateRandomForce<StateSpecification<T, TI, StateRotorsHistory<StateRotorsHistorySpecification<T, TI, ACTION_HISTORY_LENGTH, CLOSED_FORM, StateRandomForce<StateSpecification<T, TI, STATE_BASE>>>>>>>>;
         using OBSERVATION_TYPE = observation::Position<observation::PositionSpecification<T, TI,
                 observation::OrientationRotationMatrix<observation::OrientationRotationMatrixSpecification<T, TI,
                 observation::LinearVelocity<observation::LinearVelocitySpecification<T, TI,
