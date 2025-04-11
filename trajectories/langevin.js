@@ -1,4 +1,6 @@
 import { Trajectory } from "./base.js"
+import { Rand, PRNG } from "rand-seed";
+
 
 export class SecondOrderLangevin extends Trajectory {
     constructor() {
@@ -16,6 +18,7 @@ export class SecondOrderLangevin extends Trajectory {
             // EMA alpha
             alpha:  { range: [0, 1], default: 0.01 }
         })
+        this.seed = "1337"
         this.precompute()
     }
 
@@ -60,6 +63,7 @@ export class SecondOrderLangevin extends Trajectory {
         this.Vx[0] = 0
         this.Vy[0] = 0
         this.Vz[0] = 0
+        const rng = new Rand(this.seed)
 
         for (let i = 1; i < this.N; ++i) {
             for(let dim_i=0; dim_i<3; dim_i++) {
@@ -67,7 +71,7 @@ export class SecondOrderLangevin extends Trajectory {
                 const V_raw = dim_i === 0 ? this.Vx_raw : dim_i === 1 ? this.Vy_raw : this.Vz_raw;
                 const P = dim_i === 0 ? this.X : dim_i === 1 ? this.Y : this.Z;
                 const V = dim_i === 0 ? this.Vx : dim_i === 1 ? this.Vy : this.Vz;
-                const noise = randomGaussian() * Math.sqrt(dt);
+                const noise = randomGaussian(rng) * Math.sqrt(dt);
                 const v_raw = V_raw[i-1] + (-gamma*V_raw[i-1] - omega*omega*P_raw[i-1]) * dt + sigma * noise;
                 V_raw[i] = v_raw;
                 P_raw[i] = P_raw[i-1] + v_raw * dt;
@@ -95,9 +99,9 @@ export class SecondOrderLangevin extends Trajectory {
     }
 }
 
-function randomGaussian() {
-    let u1 = Math.random()
-    let u2 = Math.random()
+function randomGaussian(rng) {
+    let u1 = rng.next()
+    let u2 = rng.next()
     let r  = Math.sqrt(-2.0 * Math.log(u1))
     let theta = 2.0 * Math.PI * u2
     return r * Math.cos(theta)
