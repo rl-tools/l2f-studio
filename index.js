@@ -419,9 +419,9 @@ async function main() {
             }
             vehicle.querySelector(".vehicle-position").textContent = state.state.position.map(x => fixed(x, 3)).join(",")
             vehicle.querySelector(".vehicle-action").textContent = state.action.map(x => fixed(x, 2)).join(",")
-            const thrust = state.parameters.dynamics.rotor_thrust_coefficients[0].reduce((a, c) => a + c * Math.pow(state.parameters.dynamics.action_limit.max, i), 0)
-            const t2w = thrust/state.parameters.dynamics.mass
-            const torque = Math.abs(state.parameters.dynamics.rotor_positions[0][0]) * Math.sqrt(2) * thrust
+            const thrusts = state.parameters.dynamics.rotor_thrust_coefficients.map(curve => curve.reduce((a, c, i) => a + c * Math.pow(state.parameters.dynamics.action_limit.max, i), 0))
+            const t2w = thrusts.reduce((a, c) => a+c, 0)/(9.81 * state.parameters.dynamics.mass)
+            const torque = Math.abs(state.parameters.dynamics.rotor_positions[0][0]) * Math.sqrt(2) * thrusts[0]
             const t2i = torque / state.parameters.dynamics.J[0][0]
             vehicle.querySelector(".vehicle-t2w-t2i").textContent = `${t2w.toFixed(2)} / ${t2i.toFixed(2)}`
             vehicle.title = JSON.stringify(state.parameters.dynamics, null, 2)
