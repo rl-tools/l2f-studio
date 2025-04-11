@@ -106,15 +106,6 @@ function randomGaussian(rng) {
     let theta = 2.0 * Math.PI * u2
     return r * Math.cos(theta)
 }
-function emaCausal(x, alpha) {
-    let y = new Array(x.length)
-    if (x.length === 0) return y
-    y[0] = x[0]
-    for (let i = 1; i < x.length; i++) {
-        y[i] = alpha * x[i] + (1.0 - alpha) * y[i - 1]
-    }
-    return y
-}
 function reflectTime(t, T) {
     const c = 2 * T
     let m = ((t % c) + c) % c
