@@ -49,7 +49,7 @@ export class SecondOrderLangevin extends Trajectory {
             this.P[0][dim_i] = 0
             this.V[0][dim_i] = 0
         }
-        const rng = new Rand(this.parameter_values.seed)
+        const rng = new Rand(this.parameter_values.seed.toString()) // rand-seed takes a string as seed for whatever cursed reason
 
         for (let step_i = 1; step_i < this.N; ++step_i) {
             for(let dim_i=0; dim_i<3; dim_i++) {
