@@ -8,6 +8,7 @@ import { GamepadController } from "./gamepad_controller.js"
 import { Position } from "./trajectories/position.js"
 import { Lissajous } from "./trajectories/lissajous.js"
 import { SecondOrderLangevin } from "./trajectories/langevin.js"
+import { PingPong } from "./trajectories/ping_pong.js"
 // import Controller from  "./controller.js"
 
 // check url for "file" parameter
@@ -119,7 +120,10 @@ class Policy{
             let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
             const reference = references[i]
             reference.forEach((x, i) => {
-                input._data[0][i] = input._data[0][i] - x
+                const value_raw = input._data[0][i] - x;
+                const clip = (x, min, max) => x  < min ? min : (x > max ? max : x);
+                const value_clip = i < 3 ? clip(value_raw, -1, 1) : clip(value_raw, -2, 2);
+                input._data[0][i] = value_clip
             })
             const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
             this.policy_states[i] = new_state
@@ -216,7 +220,7 @@ async function main() {
         trajectory_offset_value.textContent = trajectory_offset.toFixed(2)
     })
     const trajectory_select = document.getElementById("reference-trajectory")
-    const trajectories = { "Position": Position, "Lissajous": Lissajous, "Langevin": SecondOrderLangevin}
+    const trajectories = { "Position": Position, "Lissajous": Lissajous, "Langevin": SecondOrderLangevin, "Ping Pong": PingPong }
     trajectory_select.innerHTML = ""
     for (const name in trajectories) {
         trajectory_select.innerHTML += `<option value="${name}">${name}</option>`
