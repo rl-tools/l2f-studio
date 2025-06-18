@@ -9,8 +9,8 @@ export class Lissajous extends Trajectory{
     evaluate(t){
         const scale = this.parameter_values.scale
         const duration = this.parameter_values.period
-        const A = 1
-        const B = 0.5
+        const A = 0.5
+        const B = 1.0
         const progress = t * 2 * Math.PI / duration
         const d_progress = 2 * Math.PI / duration
         const x = scale * Math.sin(A * progress)
