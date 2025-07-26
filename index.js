@@ -83,9 +83,19 @@ class Policy{
                 return full_observation.slice(3, 12)
             case obs === "LinearVelocity" || obs === "TrajectoryTrackingLinearVelocity":
                 return full_observation.slice(12, 15)
+            case obs.startsWith("LinearVelocityDelayed"):{
+                const delay_string = obs.split("(")[1].split(")")[0]
+                const delay = parseInt(delay_string)
+                if (delay === 0) {
+                    return full_observation.slice(12, 15)
+                } else {
+                    const s = get_state(0)
+                    return s["linear_velocity_history"][s["linear_velocity_history"].length - delay]
+                }
+            }
             case obs === "AngularVelocity":
                 return full_observation.slice(15, 18)
-            case obs.startsWith("AngularVelocityDelayed"):
+            case obs.startsWith("AngularVelocityDelayed"):{
                 const delay_string = obs.split("(")[1].split(")")[0]
                 const delay = parseInt(delay_string)
                 if (delay === 0) {
@@ -94,6 +104,7 @@ class Policy{
                     const s = get_state(0)
                     return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
                 }
+            }
             case obs.startsWith("ActionHistory"):
                 const history_length_string = obs.split("(")[1].split(")")[0]
                 const history_length = parseInt(history_length_string)

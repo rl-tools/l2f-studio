@@ -126,12 +126,14 @@ namespace builder{
         static constexpr TI EPISODE_STEP_LIMIT = 5 * SIMULATION_FREQUENCY;
         static constexpr TI CLOSED_FORM = false;
         static constexpr TI ANGULAR_VELOCITY_HISTORY = 5;
+        static constexpr TI LINEAR_VELOCITY_HISTORY = 10;
         static constexpr TI ANGULAR_VELOCITY_DELAY = 0;
-        using STATE_BASE = StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_HISTORY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>;
+        static constexpr TI LINEAR_VELOCITY_DELAY = 0;
+        using STATE_BASE = StateLinearVelocityDelay<StateLinearVelocityDelaySpecification<T, TI, LINEAR_VELOCITY_HISTORY, StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_HISTORY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>>>;
         using STATE_TYPE = StateTrajectory<StateSpecification<T, TI, StateRandomForce<StateSpecification<T, TI, StateRotorsHistory<StateRotorsHistorySpecification<T, TI, ACTION_HISTORY_LENGTH, CLOSED_FORM, StateRandomForce<StateSpecification<T, TI, STATE_BASE>>>>>>>>;
         using OBSERVATION_TYPE = observation::Position<observation::PositionSpecification<T, TI,
                 observation::OrientationRotationMatrix<observation::OrientationRotationMatrixSpecification<T, TI,
-                observation::LinearVelocity<observation::LinearVelocitySpecification<T, TI,
+                observation::LinearVelocityDelayed<observation::LinearVelocityDelayedSpecification<T, TI, LINEAR_VELOCITY_DELAY,
                 observation::AngularVelocityDelayed<observation::AngularVelocityDelayedSpecification<T, TI, ANGULAR_VELOCITY_DELAY,
                 observation::ActionHistory<observation::ActionHistorySpecification<T, TI, ACTION_HISTORY_LENGTH>>
         >>>>>>>>;
