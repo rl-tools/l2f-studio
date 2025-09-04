@@ -24,8 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             return;
         }
-        vehicleContainer.style.width = '0px';
-        localStorage.setItem('vehicle-container-width', '0px');
+        let newWidth = '0px';
+        if(parseInt(vehicleContainer.style.width) < 10 || !vehicleContainer.style.width){
+            newWidth = '200px';
+        }
+        vehicleContainer.style.width = newWidth;
+        localStorage.setItem('vehicle-container-width', newWidth);
         window.dispatchEvent(new Event('resize'));
     });
 

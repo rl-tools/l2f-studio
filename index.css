@@ -12,7 +12,7 @@ body {
     min-height: 0;
 }
 #vehicle-container{
-    width: 200px;
+    width: 0px;
     overflow: auto;
     white-space: nowrap;
 }
