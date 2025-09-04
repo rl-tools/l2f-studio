@@ -380,8 +380,40 @@ async function main() {
             checkbox.checked = !all_checked
         })
     })
+    const set_dynamics = (dynamics) => {
+        const vehicle_container = document.getElementById("vehicle-list")
+        const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
+        const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
+        const ids = []
+        checkboxes.forEach((checkbox, i) => {
+            if (checkbox.checked) {
+                ids.push(i)
+            }
+        })
+        console.log("setting dynamics for vehicles: ", ids)
+        console.log("dynamics: ", dynamics)
+        parameter_manager.set_dynamics(ids, ids.map(() => dynamics))
+    }
     document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
-        document.getElementById("vehicle-load-dynamics-btn-backend").click();
+        if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
+            document.getElementById("vehicle-load-dynamics-btn-backend").click();
+            return;
+        }
+        else{
+            const platform = document.getElementById("vehicle-load-dynamics-selector").value
+            fetch(`./blob/registry/${platform}.json`).then(async (response) => {
+                const parameters = await response.json()
+                set_dynamics(parameters.dynamics)
+            })
+        }
+    })
+    fetch("./blob/registry/index.json").then(async (response) => {
+        const text = await response.text()
+        const platforms = text.split("\n").filter(line => line.trim() !== "").sort()
+        const platform_select = document.getElementById("vehicle-load-dynamics-selector")
+        platforms.forEach(platform => {
+            platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
+        })
     })
 
 
@@ -455,16 +487,7 @@ async function main() {
                 console.log(`Loaded dynamics from ${file.name}`)
                 const parameters = JSON.parse(e.target.result)
                 const dynamics = parameters.dynamics
-                const vehicle_container = document.getElementById("vehicle-list")
-                const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
-                const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
-                const ids = []
-                checkboxes.forEach((checkbox, i) => {
-                    if (checkbox.checked) {
-                        ids.push(i)
-                    }
-                })
-                parameter_manager.set_dynamics(ids, ids.map(() => dynamics))
+                set_dynamics(dynamics)
             };
             reader.readAsText(file);
         }

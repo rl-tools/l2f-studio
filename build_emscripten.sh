@@ -2,7 +2,7 @@ DEBUG=${DEBUG:-0}
 
 DEBUG_FLAGS=""
 if [[ $DEBUG -eq 1 ]]; then
-    DEBUG_FLAGS="-g -gsource-map -O0 -sSAFE_HEAP=1 -sASSERTIONS=1"
+    DEBUG_FLAGS="-g -gsource-map -O0 -sSAFE_HEAP=1 -sASSERTIONS=1 -sNO_DISABLE_EXCEPTION_CATCHING"
 else
     DEBUG_FLAGS="-O3"
 fi

@@ -58,6 +58,7 @@
             "imports": {
                 "three": "./blob/lib/three.js",
                 "three-orbitcontrols": "./blob/lib/three.js",
+                "three-gltfloader": "./blob/lib/three.js",
                 "mathjs": "./blob/lib/math.js",
                 "stats.js": "./blob/lib/dependencies.js",
                 "jsfive": "./blob/lib/jsfive.js",
@@ -77,6 +78,9 @@
         <div id="vehicle-container">
             <div id="vehicle-container-header">
                 <input type="button" id="vehicle-select-all-btn" value="Select All"></input>
+                <select id="vehicle-load-dynamics-selector">
+                    <option value="file" selected>from file</option>
+                </select>
                 <input type="file" id="vehicle-load-dynamics-btn-backend"></input>
                 <input type="button" id="vehicle-load-dynamics-btn" value="Load Dynamics"></input>
             </div>

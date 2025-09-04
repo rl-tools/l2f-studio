@@ -18,3 +18,5 @@ npm uninstall rltools; npm install rltools@file:../rltools.js/
 npm install --save-dev esbuild@0.25.2
 ./bundle.sh
 ```
+
+The `./blob/registry` is populated by `src/rl/environments/l2f/export_dynamics.cpp`.

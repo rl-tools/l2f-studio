@@ -48,7 +48,7 @@ namespace builder{
     };
 
     using PARAMETERS_SPEC = ParametersBaseSpecification<T, TI, 4, REWARD_FUNCTION>;
-    using PARAMETERS_TYPE = ParametersTrajectory<ParametersTrajectorySpecification<T, TI, TRAJECTORY_OPTIONS, ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>>>;
+    using PARAMETERS_TYPE = ParametersObservationDelay<ParametersObservationDelaySpecification<T, TI, ParametersTrajectory<ParametersTrajectorySpecification<T, TI, TRAJECTORY_OPTIONS, ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>>>>>;
 
     static constexpr typename PARAMETERS_TYPE::Dynamics dynamics = parameters::dynamics::registry<MODEL, PARAMETERS_SPEC>;
     static constexpr TI SIMULATION_FREQUENCY = 100;
@@ -105,19 +105,23 @@ namespace builder{
             0.01 // alpha
         }
     };
-    static constexpr PARAMETERS_TYPE nominal_parameters ={
+    static constexpr PARAMETERS_TYPE nominal_parameters = {
         {
             {
                 {
-                    dynamics,
-                    integration,
-                    mdp
-                }, // Base
-                disturbances
-            }, // Disturbances
-            domain_randomization
-        }, // DomainRandomization
-        trajectory // Trajectory
+                    {
+                        dynamics,
+                        integration,
+                        mdp
+                    }, // Base
+                    disturbances
+                }, // Disturbances
+                domain_randomization
+            }, // DomainRandomization
+            trajectory // Trajectory
+        }, // ObservationDelay
+        0,
+        0
     };
 
     struct ENVIRONMENT_STATIC_PARAMETERS{
