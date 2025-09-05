@@ -1,7 +1,10 @@
+html { font-size: 16px; }
+:root { --ui-scale: 1; }
+
 body {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     margin: 0;
     overflow: hidden;
 }
@@ -69,8 +72,14 @@ body {
     justify-content: center;
     align-items: center;
     gap: 10px;
-    width: 100%;
-    margin: 8px;
+    padding: 0.3rem;
+    background-color: rgb(224, 224, 224);
+}
+#controller-options-container{
+    flex-direction: row;
+}
+.controls-container-every-other{
+    background-color: rgb(215, 215, 215);
 }
 .slider-container > div{
     text-align: center;
@@ -201,13 +210,6 @@ canvas{
 }
 
 
-#controller-options-container{
-    display: flex ;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    margin: 8px;
-}
 
 #controller-selector-container{
     margin-right: 8px;
