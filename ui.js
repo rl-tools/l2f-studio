@@ -64,10 +64,19 @@ class State{
         this.capture = capture
         this.camera_position = camera_position
         this.interactive = interactive
-        this.IS_IOS = /iP(hone|ad|od)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
+        this.IS_MOBILE = this.is_mobile();
         this.lastCanvasWidth = 0
         this.lastCanvasHeight = 0
     }
+    
+    is_mobile() {
+        const isIOS = /iP(hone|ad|od)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
+        const isAndroid = /Android/.test(navigator.userAgent);
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent) || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isTablet = /iPad|Android(?!.*Mobile)/.test(navigator.userAgent);
+        return isIOS || isAndroid || isMobile || isTablet;
+    }
+    
     async initialize(){
         const width = this.canvas.width
         const height = this.canvas.height
@@ -75,9 +84,9 @@ class State{
         this.camera = new THREE.PerspectiveCamera( 40, width / height, 0.1, 1000 );
         this.scene.add(this.camera);
 
-        this.renderer = new THREE.WebGLRenderer({canvas: this.canvas, antialias: !this.IS_IOS, alpha: !this.IS_IOS, preserveDrawingBuffer: this.capture && !this.IS_IOS} );
+        this.renderer = new THREE.WebGLRenderer({canvas: this.canvas, antialias: !this.IS_MOBILE, alpha: !this.IS_MOBILE, preserveDrawingBuffer: this.capture && !this.IS_MOBILE} );
 
-        const dpr = !this.IS_IOS ? this.devicePixelRatio : Math.min(this.devicePixelRatio || window.devicePixelRatio || 1, 2)
+        const dpr = !this.IS_MOBILE ? this.devicePixelRatio : Math.min(this.devicePixelRatio || window.devicePixelRatio || 1, 2)
         this.renderer.setPixelRatio(dpr)
         this.renderer.setClearColor(0xffffff, 0);
 
