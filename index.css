@@ -1,5 +1,4 @@
-html { font-size: 16px; }
-:root { --ui-scale: 1; }
+@import url("thumb.css");
 
 body {
     display: flex;
@@ -66,6 +65,7 @@ body {
 }
 #controls-box{
     background-color: #c5c5c5;
+    overflow:auto;
 }
 .controls-container {
     display: flex;
@@ -74,6 +74,7 @@ body {
     gap: 10px;
     padding: 0.3rem;
     background-color: rgb(224, 224, 224);
+    flex-wrap: wrap;
 }
 #controller-options-container{
     flex-direction: row;
