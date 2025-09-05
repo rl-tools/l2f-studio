@@ -65,6 +65,8 @@ class State{
         this.camera_position = camera_position
         this.interactive = interactive
         this.IS_IOS = /iP(hone|ad|od)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
+        this.lastCanvasWidth = 0
+        this.lastCanvasHeight = 0
     }
     async initialize(){
         const width = this.canvas.width
@@ -80,6 +82,9 @@ class State{
         this.renderer.setClearColor(0xffffff, 0);
 
         this.renderer.setSize(width/this.devicePixelRatio, height/this.devicePixelRatio);
+        
+        this.lastCanvasWidth = this.canvas.width
+        this.lastCanvasHeight = this.canvas.height
 
 
         // canvasContainer.appendChild(this.renderer.domElement );
@@ -402,20 +407,34 @@ export async function episode_init_multi(ui_state, parameters){
 }
 
 function update_camera(ui_state){
-    if(ui_state.IS_IOS && ui_state.render_tick % 10 == 0){
-        const width = ui_state.canvas.width/ui_state.devicePixelRatio
-        const height = ui_state.canvas.height/ui_state.devicePixelRatio
-        ui_state.camera.aspect =  width / height
-        ui_state.camera.updateProjectionMatrix()
-        ui_state.renderer.setPixelRatio(ui_state.devicePixelRatio)
-        ui_state.renderer.setSize(width, height)
+    const currentWidth = ui_state.canvas.width
+    const currentHeight = ui_state.canvas.height
+    const hasResized = currentWidth !== ui_state.lastCanvasWidth || currentHeight !== ui_state.lastCanvasHeight
+    
+    if (hasResized) {
+        const width = currentWidth / ui_state.devicePixelRatio;
+        const height = currentHeight / ui_state.devicePixelRatio;
+        
+        if (ui_state.camera.aspect !== width / height) {
+            ui_state.camera.aspect = width / height;
+            ui_state.camera.updateProjectionMatrix();
+        }
+        
+        if (ui_state.renderer) {
+            ui_state.renderer.setPixelRatio(ui_state.devicePixelRatio);
+            ui_state.renderer.setSize(width, height, false);
+        }
+        
+        ui_state.lastCanvasWidth = currentWidth
+        ui_state.lastCanvasHeight = currentHeight
     }
 
-    if(ui_state.interactive){
+    if(ui_state.interactive && ui_state.controls){
         ui_state.controls.update()
     }
-    ui_state.renderer.render(ui_state.scene, ui_state.camera);
-
+    if(ui_state.renderer){
+        ui_state.renderer.render(ui_state.scene, ui_state.camera);
+    }
     ui_state.render_tick += 1
 }
 
