@@ -64,6 +64,7 @@ class State{
         this.capture = capture
         this.camera_position = camera_position
         this.interactive = interactive
+        this.IS_IOS = /iP(hone|ad|od)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
     }
     async initialize(){
         const width = this.canvas.width
@@ -72,8 +73,10 @@ class State{
         this.camera = new THREE.PerspectiveCamera( 40, width / height, 0.1, 1000 );
         this.scene.add(this.camera);
 
-        this.renderer = new THREE.WebGLRenderer( {canvas: this.canvas, antialias: true, alpha: true, preserveDrawingBuffer: this.capture} );
-        this.renderer.setPixelRatio(this.devicePixelRatio)
+        this.renderer = new THREE.WebGLRenderer({canvas: this.canvas, antialias: !this.IS_IOS, alpha: !this.IS_IOS, preserveDrawingBuffer: this.capture && !this.IS_IOS} );
+
+        const dpr = !this.IS_IOS ? this.devicePixelRatio : Math.min(this.devicePixelRatio || window.devicePixelRatio || 1, 2)
+        this.renderer.setPixelRatio(dpr)
         this.renderer.setClearColor(0xffffff, 0);
 
         this.renderer.setSize(width/this.devicePixelRatio, height/this.devicePixelRatio);
@@ -399,7 +402,7 @@ export async function episode_init_multi(ui_state, parameters){
 }
 
 function update_camera(ui_state){
-    if(ui_state.render_tick % 10 == 0){
+    if(ui_state.IS_IOS && ui_state.render_tick % 10 == 0){
         const width = ui_state.canvas.width/ui_state.devicePixelRatio
         const height = ui_state.canvas.height/ui_state.devicePixelRatio
         ui_state.camera.aspect =  width / height
