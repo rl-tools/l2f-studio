@@ -417,6 +417,28 @@ async function main() {
         platforms.forEach(platform => {
             platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
         })
+        
+        setTimeout(() => {
+            const selectAllBtn = document.getElementById("vehicle-select-all-btn")
+            if (selectAllBtn) {
+                selectAllBtn.click()
+                console.log("Clicked 'Select All' button")
+            }
+            
+            const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
+            if (dynamicsSelector) {
+                dynamicsSelector.value = "x500"
+                console.log("Selected 'x500' in dropdown")
+            }
+            
+            setTimeout(() => {
+                const loadDynamicsBtn = document.getElementById("vehicle-load-dynamics-btn")
+                if (loadDynamicsBtn) {
+                    loadDynamicsBtn.click()
+                    console.log("Clicked 'Load Dynamics' button")
+                }
+            }, 100)
+        }, 500)
     })
 
 
@@ -495,6 +517,7 @@ async function main() {
             reader.readAsText(file);
         }
     })
+
 
 }
 
