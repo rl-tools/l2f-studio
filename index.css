@@ -310,3 +310,13 @@ canvas{
     transform: translateY(-2.5px);
     box-shadow: 0 4px 7.5px rgba(0, 0, 0, 0.3);
 }
+
+code {
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    font-family: monospace;
+    padding: 2px 4px;
+    font-size: 90%;
+    color: #d63384;
+    border: 1px solid #d1d5da;
+}

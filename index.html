@@ -110,6 +110,8 @@
                     You can drag the sidebar next to the 3D view to reveal the menu for loading dynamics parameters. 
                     You can select one of the presets in the dropdown as well as load parameters from disk, following the l2f json format. 
                     The last row allows you to perturb dynamics parameters based on a simple formula (hover over the formula input for a description of the variables).
+                    <h4 style="margin: 0px; margin-top: 5px;">Reproducing Oscillations Caused by Linear Velocity Feedback Delays</h4>
+                    You can actually reproduce the finding of the oscillations on the non-EKF-based quadrotors (Section 2.4.1) by replacing <code>LinearVelocity</code> with <code>LinearVelocityDelayed(2)</code> and loading dynamics parameters of a quadrotor with a thrust-to-weight ratio > 2 (any one except of the Crazyflie). <br> You can just paste <code>Position.OrientationRotationMatrix.LinearVelocityDelayed(2).AngularVelocityDelayed(0).ActionHistory(1)</code> and hit "Sample Initial States".
                 </div>
             </center>
         </div>
