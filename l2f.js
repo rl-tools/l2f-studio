@@ -51,13 +51,31 @@ export class L2F{
         const dpr = window.devicePixelRatio || 1;
         const resizeCanvas = () => {
             const parentRect = parent.getBoundingClientRect();
-            this.canvas.style.width = parentRect.width + 'px';
-            this.canvas.style.height = parentRect.height + 'px';
-            this.canvas.width = parentRect.width * dpr;
-            this.canvas.height = parentRect.height * dpr;
+            const newWidth = parentRect.width;
+            const newHeight = parentRect.height;
+            
+            // Only update if dimensions actually changed
+            if (this.canvas.style.width !== newWidth + 'px' || 
+                this.canvas.style.height !== newHeight + 'px') {
+                
+                this.canvas.style.width = newWidth + 'px';
+                this.canvas.style.height = newHeight + 'px';
+                this.canvas.width = newWidth * dpr;
+                this.canvas.height = newHeight * dpr;
+            }
         };
-        resizeCanvas()
-        window.addEventListener('resize', resizeCanvas.bind(this), false);
+        resizeCanvas();
+        
+        // Use ResizeObserver for better resize detection
+        if ('ResizeObserver' in window) {
+            this.resizeObserver = new ResizeObserver(entries => {
+                resizeCanvas();
+            });
+            this.resizeObserver.observe(parent);
+        } else {
+            // Fallback for older browsers
+            window.addEventListener('resize', resizeCanvas.bind(this), false);
+        }
         this.policy = policy
 
         this.initialized = createModule().then(async (l2f_interface) => {

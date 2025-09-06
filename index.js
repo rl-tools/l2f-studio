@@ -201,6 +201,9 @@ async function load_model(checkpoint) {
 }
 
 async function main() {
+    if(window.location.hostname === "raptor.rl.tools" || urlParams.get("raptor") === "true"){
+        document.getElementById("raptor-project-page").style.display = "block";
+    }
     const trajectory_offset_container = document.getElementById("reference-trajectory-offset-container")
     const trajectory_offset_slider = trajectory_offset_container.querySelector("input[type=range]")
     const trajectory_offset_label = trajectory_offset_container.querySelectorAll(".control-container-label")[0]
