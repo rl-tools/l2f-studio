@@ -387,7 +387,7 @@ async function main() {
             checkbox.checked = !all_checked
         })
     })
-    const set_dynamics = (dynamics) => {
+    const set_parameters = (parameters) => {
         const vehicle_container = document.getElementById("vehicle-list")
         const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
         const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
@@ -397,9 +397,12 @@ async function main() {
                 ids.push(i)
             }
         })
-        console.log("setting dynamics for vehicles: ", ids)
-        console.log("dynamics: ", dynamics)
-        parameter_manager.set_dynamics(ids, ids.map(() => dynamics))
+        console.log("setting parameters for vehicles: ", ids)
+        console.log("parameters: ", parameters)
+        parameter_manager.set_parameters(ids, ids.map(() => parameters))
+        l2f.initialized.then(() => {
+            l2f.ui.episode_init_multi(l2f.ui_state, l2f.parameters)
+        })
     }
     document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
         if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
@@ -410,7 +413,7 @@ async function main() {
             const platform = document.getElementById("vehicle-load-dynamics-selector").value
             fetch(`./blob/registry/${platform}.json`).then(async (response) => {
                 const parameters = await response.json()
-                set_dynamics(parameters.dynamics)
+                set_parameters(parameters)
             })
         }
     })
@@ -426,20 +429,17 @@ async function main() {
         const selectAllBtn = document.getElementById("vehicle-select-all-btn")
         if (selectAllBtn) {
             selectAllBtn.click()
-            console.log("Clicked 'Select All' button")
         }
         const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
         if (dynamicsSelector) {
-            dynamicsSelector.value = "x500"
-            console.log("Selected 'x500' in dropdown")
+            // dynamicsSelector.value = "x500"
+            dynamicsSelector.value = "crazyflie"
         }
         await sleep(100)
         const loadDynamicsBtn = document.getElementById("vehicle-load-dynamics-btn")
         if (loadDynamicsBtn) {
             loadDynamicsBtn.click()
-            console.log("Clicked 'Load Dynamics' button")
         }
-        await sleep(200)
         
         const perturbation_id_input = document.getElementById("perturbation-id-input")
         perturbation_id_input.value = "parameters.dynamics.mass"
@@ -519,8 +519,7 @@ async function main() {
             reader.onload = async function (e) {
                 console.log(`Loaded dynamics from ${file.name}`)
                 const parameters = JSON.parse(e.target.result)
-                const dynamics = parameters.dynamics
-                set_dynamics(dynamics)
+                set_parameters(parameters)
             };
             reader.readAsText(file);
         }

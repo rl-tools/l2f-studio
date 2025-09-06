@@ -55,7 +55,7 @@ function Matrix4FromRotMat(rotMat){
 
 
 class State{
-    constructor(canvas, {devicePixelRatio, showAxes=false, capture=false, camera_position=[0.5, 0.5, 1], interactive=true}){
+    constructor(canvas, {devicePixelRatio, showAxes=false, capture=false, camera_position=[0.5, 0.5, 1], interactive=true, conta_url="/conta/"}){
         this.canvas = canvas
         this.devicePixelRatio = devicePixelRatio
         this.showAxes = showAxes
@@ -67,8 +67,9 @@ class State{
         this.IS_MOBILE = this.is_mobile();
         this.lastCanvasWidth = 0
         this.lastCanvasHeight = 0
+        this.conta_url = conta_url
     }
-    
+
     is_mobile() {
         const isIOS = /iP(hone|ad|od)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
         const isAndroid = /Android/.test(navigator.userAgent);
@@ -76,7 +77,7 @@ class State{
         const isTablet = /iPad|Android(?!.*Mobile)/.test(navigator.userAgent);
         return isIOS || isAndroid || isMobile || isTablet;
     }
-    
+
     async initialize(){
         const width = this.canvas.width
         const height = this.canvas.height
@@ -84,14 +85,14 @@ class State{
         this.camera = new THREE.PerspectiveCamera( 40, width / height, 0.1, 1000 );
         this.scene.add(this.camera);
 
-        this.renderer = new THREE.WebGLRenderer({canvas: this.canvas, antialias: !this.IS_MOBILE, alpha: !this.IS_MOBILE, preserveDrawingBuffer: this.capture && !this.IS_MOBILE} );
+        this.renderer = new THREE.WebGLRenderer({canvas: this.canvas, antialias: true, alpha: !this.IS_MOBILE, preserveDrawingBuffer: this.capture && !this.IS_MOBILE} );
 
         const dpr = !this.IS_MOBILE ? this.devicePixelRatio : Math.min(this.devicePixelRatio || window.devicePixelRatio || 1, 2)
         this.renderer.setPixelRatio(dpr)
         this.renderer.setClearColor(0xffffff, 0);
 
         this.renderer.setSize(width/this.devicePixelRatio, height/this.devicePixelRatio);
-        
+
         this.lastCanvasWidth = this.canvas.width
         this.lastCanvasHeight = this.canvas.height
 
@@ -185,20 +186,20 @@ function thrust_direction_to_quaternion(thrust_direction){
 }
 
 export class DroneMesh{
-  constructor(parameters, origin, displayIMUCoordinateSystem, displayActions){
+  constructor(parameters, origin, displayIMUCoordinateSystem, displayActions, conta_url){
     console.assert(parameters.ui)
     this.group = new THREE.Group()
-    const url = `./conta/${parameters.ui.model}`
+    const url = `${conta_url}${parameters.ui.model}`
     this.loaded = new GLTFLoader().loadAsync(url)
     this.loaded.then((gltf) => {
       const object = gltf.scene
       const object_group = new THREE.Group()
       object_group.add(object)
-      if(parameters.ui.name == "x500"){
-        object_group.rotation.set(Math.PI / 2, 0, Math.PI / 2, 'ZYX')
-        const scale = 0.5
-        object_group.scale.set(scale, scale, scale)
-      }
+//      if(parameters.ui.name == "x500"){
+      object_group.rotation.set(Math.PI / 2, 0, Math.PI / 2, 'ZYX')
+      const scale = 0.5
+      object_group.scale.set(scale, scale, scale)
+//      }
       this.group.add(object_group)
     })
     if (displayIMUCoordinateSystem) {
@@ -336,10 +337,10 @@ export class DroneDefault{
 
 }
 
-async function drone_factory(parameters, origin, displayIMUCoordinateSystem, displayActions){
+async function drone_factory(parameters, origin, displayIMUCoordinateSystem, displayActions, conta_url){
   if(parameters.ui && parameters.ui.enable && parameters.ui.model){
     try{
-      const model = new DroneMesh(parameters, origin, displayIMUCoordinateSystem, displayActions)
+      const model = new DroneMesh(parameters, origin, displayIMUCoordinateSystem, displayActions, conta_url)
       await model.loaded
       return model
     }
@@ -381,7 +382,7 @@ export async function episode_init(ui_state, parameters){
     const distance = (parameters.ui && parameters.ui.camera_distance) ? parameters.ui.camera_distance : Math.cbrt(parameters.dynamics.mass) * 2
     set_camera(ui_state, distance)
     clear_episode(ui_state)
-    ui_state.drone = await drone_factory(parameters, [0, 0, 0], ui_state.showAxes)
+    ui_state.drone = await drone_factory(parameters, [0, 0, 0], ui_state.showAxes, false, ui_state.conta_url)
     ui_state.simulator.add(ui_state.drone.get())
     if(ui_state.showAxes){
         ui_state.origin_coordinate_system = new CoordinateSystem([0, 0, 0], 1 * scale, 0.01 * scale)
@@ -404,7 +405,7 @@ export async function episode_init_multi(ui_state, parameters){
     await Promise.all(parameters.map(async (parameter, i) => {
         const x = (i % grid_size) * grid_distance
         const y = Math.floor(i / grid_size) * grid_distance
-        const drone = await drone_factory(parameter, [x, y, 0], ui_state.showAxes)
+        const drone = await drone_factory(parameter, [x, y, 0], ui_state.showAxes, false, ui_state.conta_url)
         ui_state.simulator.add(drone.get())
         if(ui_state.showAxes){
             const cs = new CoordinateSystem([x, y, 0], 1, 0.01)
@@ -419,21 +420,21 @@ function update_camera(ui_state){
     const currentWidth = ui_state.canvas.width
     const currentHeight = ui_state.canvas.height
     const hasResized = currentWidth !== ui_state.lastCanvasWidth || currentHeight !== ui_state.lastCanvasHeight
-    
+
     if (hasResized) {
         const width = currentWidth / ui_state.devicePixelRatio;
         const height = currentHeight / ui_state.devicePixelRatio;
-        
+
         if (ui_state.camera.aspect !== width / height) {
             ui_state.camera.aspect = width / height;
             ui_state.camera.updateProjectionMatrix();
         }
-        
+
         if (ui_state.renderer) {
             ui_state.renderer.setPixelRatio(ui_state.devicePixelRatio);
             ui_state.renderer.setSize(width, height, false);
         }
-        
+
         ui_state.lastCanvasWidth = currentWidth
         ui_state.lastCanvasHeight = currentHeight
     }
@@ -484,3 +485,6 @@ export async function render_multi(ui_state, parameters, states, actions){
     }
     update_camera(ui_state)
 }
+
+
+

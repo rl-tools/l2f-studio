@@ -1,3 +1,6 @@
 [submodule "blob"]
 	path = blob
 	url = https://github.com/rl-tools/l2f-studio-blob.git
+[submodule "conta-data"]
+	path = conta
+	url = https://github.com/rl-tools/conta-data.git

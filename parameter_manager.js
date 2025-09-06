@@ -267,12 +267,10 @@ export class ParameterManager{
         this.l2f.states.forEach((state, i) => state.set_state(JSON.stringify(objs[i].state)))
         this.l2f.states.forEach((state, i) => state.set_parameters(JSON.stringify(objs[i].parameters)))
     }
-    set_dynamics(ids, parameters){
+    set_parameters(ids, parameters){
         ids.forEach((id, i) => {
-            const previous = JSON.parse(this.l2f.states[id].get_parameters())
-            previous.dynamics = parameters[i]
-            this.l2f.states[id].set_parameters(JSON.stringify(previous))
-            this.l2f.parameters[id] = previous
+            this.l2f.states[id].set_parameters(JSON.stringify(parameters[i]))
+            this.l2f.parameters[id] = parameters[i]
         })
     }
 }
