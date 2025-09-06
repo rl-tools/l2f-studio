@@ -432,6 +432,8 @@ async function main() {
         const parameters = await parameters_response.json()
         await set_parameters(parameters)
 
+        const sim_container_cover = document.getElementById("sim-container-cover")
+        sim_container_cover.style.display = "none"
         const pause_button = document.getElementById("pause")
         if(pause_button.innerText === "Resume"){
             pause_button.click()
