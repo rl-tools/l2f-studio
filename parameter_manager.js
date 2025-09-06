@@ -217,13 +217,6 @@ export class ParameterManager{
             }
         })
 
-        l2f.initialized.then(() => {
-            perturbation_id_input.value = "parameters.dynamics.mass"
-            perturbation_id_input.dispatchEvent(new Event("input"))
-            const event = new Event('keydown')
-            event.key = "Enter"
-            perturbation_id_input.dispatchEvent(event)
-        })
     }
     get_values_from_path(path){
         const objs = this.l2f.states.map(state => {

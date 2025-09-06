@@ -18,6 +18,10 @@ const file_url = file ? file : "./blob/checkpoint.h5"
 
 let proxy_controller = null
 
+async function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 
 class ProxyController {
     constructor(current_policy) {
@@ -418,27 +422,31 @@ async function main() {
             platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
         })
         
-        setTimeout(() => {
-            const selectAllBtn = document.getElementById("vehicle-select-all-btn")
-            if (selectAllBtn) {
-                selectAllBtn.click()
-                console.log("Clicked 'Select All' button")
-            }
-            
-            const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
-            if (dynamicsSelector) {
-                dynamicsSelector.value = "x500"
-                console.log("Selected 'x500' in dropdown")
-            }
-            
-            setTimeout(() => {
-                const loadDynamicsBtn = document.getElementById("vehicle-load-dynamics-btn")
-                if (loadDynamicsBtn) {
-                    loadDynamicsBtn.click()
-                    console.log("Clicked 'Load Dynamics' button")
-                }
-            }, 100)
-        }, 500)
+        await sleep(500)
+        const selectAllBtn = document.getElementById("vehicle-select-all-btn")
+        if (selectAllBtn) {
+            selectAllBtn.click()
+            console.log("Clicked 'Select All' button")
+        }
+        const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
+        if (dynamicsSelector) {
+            dynamicsSelector.value = "x500"
+            console.log("Selected 'x500' in dropdown")
+        }
+        await sleep(100)
+        const loadDynamicsBtn = document.getElementById("vehicle-load-dynamics-btn")
+        if (loadDynamicsBtn) {
+            loadDynamicsBtn.click()
+            console.log("Clicked 'Load Dynamics' button")
+        }
+        await sleep(200)
+        
+        const perturbation_id_input = document.getElementById("perturbation-id-input")
+        perturbation_id_input.value = "parameters.dynamics.mass"
+        perturbation_id_input.dispatchEvent(new Event("input"))
+        const event = new Event('keydown')
+        event.key = "Enter"
+        perturbation_id_input.dispatchEvent(event)
     })
 
 

@@ -112,7 +112,8 @@ button{
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    gap: 30px;
+    flex-wrap: wrap;
+    column-gap: 30px;
 }
 #perturbation-id-suggestion{
     text-align: left;
@@ -126,6 +127,9 @@ button{
     text-align: center;
     width: 20em;
 }
+.perturbation-group-list > ul {
+    margin: 0;
+}
 .perturbation-group-item {
     display: grid;
     grid-template-columns: 1fr auto auto;
@@ -135,7 +139,7 @@ button{
 
 .perturbation-group-item-path {
     font-family: monospace;
-    overflow: hidden;
+    /* overflow: hidden; */
     text-overflow: ellipsis;
     white-space: nowrap;
 }
