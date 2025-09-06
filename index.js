@@ -205,9 +205,6 @@ async function load_model(checkpoint) {
 }
 
 async function main() {
-    if(window.location.hostname === "raptor.rl.tools" || urlParams.get("raptor") === "true"){
-        document.getElementById("raptor-project-page").style.display = "block";
-    }
     const trajectory_offset_container = document.getElementById("reference-trajectory-offset-container")
     const trajectory_offset_slider = trajectory_offset_container.querySelector("input[type=range]")
     const trajectory_offset_label = trajectory_offset_container.querySelectorAll(".control-container-label")[0]
@@ -424,6 +421,7 @@ async function main() {
             platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
         })
         
+        await l2f.initialized
         await sleep(500)
         const selectAllBtn = document.getElementById("vehicle-select-all-btn")
         selectAllBtn.click()
@@ -526,7 +524,11 @@ async function main() {
 
 }
 
-document.addEventListener("DOMContentLoaded", main)
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", main)
+} else {
+    main()
+}
 
 const drag_and_drop_overlay = document.getElementById('drag-and-drop-overlay');
 let drag_and_drop_counter = 0;
