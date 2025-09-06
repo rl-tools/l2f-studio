@@ -19,6 +19,7 @@ export class L2F{
     constructor(parent, num_quadrotors, policy, seed){
 
         this.seed = seed
+        this.request_pause = true
 
 
         this.state_update_callbacks = []

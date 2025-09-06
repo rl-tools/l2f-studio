@@ -387,7 +387,7 @@ async function main() {
             checkbox.checked = !all_checked
         })
     })
-    const set_parameters = (parameters) => {
+    const set_parameters = async (parameters) => {
         const vehicle_container = document.getElementById("vehicle-list")
         const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
         const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
@@ -400,9 +400,8 @@ async function main() {
         console.log("setting parameters for vehicles: ", ids)
         console.log("parameters: ", parameters)
         parameter_manager.set_parameters(ids, ids.map(() => parameters))
-        l2f.initialized.then(() => {
-            l2f.ui.episode_init_multi(l2f.ui_state, l2f.parameters)
-        })
+        await l2f.initialized
+        await l2f.ui.episode_init_multi(l2f.ui_state, l2f.parameters)
     }
     document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
         if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
@@ -427,18 +426,17 @@ async function main() {
         
         await sleep(500)
         const selectAllBtn = document.getElementById("vehicle-select-all-btn")
-        if (selectAllBtn) {
-            selectAllBtn.click()
-        }
+        selectAllBtn.click()
+
         const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
-        if (dynamicsSelector) {
-            // dynamicsSelector.value = "x500"
-            dynamicsSelector.value = "crazyflie"
-        }
-        await sleep(100)
-        const loadDynamicsBtn = document.getElementById("vehicle-load-dynamics-btn")
-        if (loadDynamicsBtn) {
-            loadDynamicsBtn.click()
+        dynamicsSelector.value = "x500"
+        const parameters_response = await fetch(`./blob/registry/${dynamicsSelector.value}.json`)
+        const parameters = await parameters_response.json()
+        await set_parameters(parameters)
+
+        const pause_button = document.getElementById("pause")
+        if(pause_button.innerText === "Resume"){
+            pause_button.click()
         }
         
         const perturbation_id_input = document.getElementById("perturbation-id-input")
