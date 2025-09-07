@@ -384,68 +384,6 @@ async function main() {
             checkbox.checked = !all_checked
         })
     })
-    const set_parameters = async (parameters) => {
-        const vehicle_container = document.getElementById("vehicle-list")
-        const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
-        const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
-        const ids = []
-        checkboxes.forEach((checkbox, i) => {
-            if (checkbox.checked) {
-                ids.push(i)
-            }
-        })
-        console.log("setting parameters for vehicles: ", ids)
-        console.log("parameters: ", parameters)
-        parameter_manager.set_parameters(ids, ids.map(() => parameters))
-        await l2f.initialized
-        await l2f.ui.episode_init_multi(l2f.ui_state, l2f.parameters)
-    }
-    document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
-        if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
-            document.getElementById("vehicle-load-dynamics-btn-backend").click();
-            return;
-        }
-        else{
-            const platform = document.getElementById("vehicle-load-dynamics-selector").value
-            fetch(`./blob/registry/${platform}.json`).then(async (response) => {
-                const parameters = await response.json()
-                set_parameters(parameters)
-            })
-        }
-    })
-    fetch("./blob/registry/index.json").then(async (response) => {
-        const text = await response.text()
-        const platforms = text.split("\n").filter(line => line.trim() !== "").sort()
-        const platform_select = document.getElementById("vehicle-load-dynamics-selector")
-        platforms.forEach(platform => {
-            platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
-        })
-        
-        await l2f.initialized
-        await sleep(500)
-        const selectAllBtn = document.getElementById("vehicle-select-all-btn")
-        selectAllBtn.click()
-
-        const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
-        dynamicsSelector.value = "x500"
-        const parameters_response = await fetch(`./blob/registry/${dynamicsSelector.value}.json`)
-        const parameters = await parameters_response.json()
-        await set_parameters(parameters)
-
-        const sim_container_cover = document.getElementById("sim-container-cover")
-        sim_container_cover.style.display = "none"
-        const pause_button = document.getElementById("pause")
-        if(pause_button.innerText === "Resume"){
-            pause_button.click()
-        }
-        
-        const perturbation_id_input = document.getElementById("perturbation-id-input")
-        perturbation_id_input.value = "parameters.dynamics.mass"
-        perturbation_id_input.dispatchEvent(new Event("input"))
-        const event = new Event('keydown')
-        event.key = "Enter"
-        perturbation_id_input.dispatchEvent(event)
-    })
 
 
     const seed = 12
@@ -510,6 +448,23 @@ async function main() {
     const parameter_manager = new ParameterManager(l2f)
     const sim_controls = new SimControls(l2f, proxy_controller, parameter_manager)
 
+
+    const set_parameters = async (parameters) => {
+        const vehicle_container = document.getElementById("vehicle-list")
+        const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
+        const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
+        const ids = []
+        checkboxes.forEach((checkbox, i) => {
+            if (checkbox.checked) {
+                ids.push(i)
+            }
+        })
+        console.log("setting parameters for vehicles: ", ids)
+        console.log("parameters: ", parameters)
+        parameter_manager.set_parameters(ids, ids.map(() => parameters))
+        await l2f.initialized
+        await l2f.ui.episode_init_multi(l2f.ui_state, l2f.parameters)
+    }
     document.getElementById("vehicle-load-dynamics-btn-backend").addEventListener("change", async () => {
         const file = event.target.files[0];
         if (file) {
@@ -521,6 +476,52 @@ async function main() {
             };
             reader.readAsText(file);
         }
+    })
+    document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
+        if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
+            document.getElementById("vehicle-load-dynamics-btn-backend").click();
+            return;
+        }
+        else{
+            const platform = document.getElementById("vehicle-load-dynamics-selector").value
+            fetch(`./blob/registry/${platform}.json`).then(async (response) => {
+                const parameters = await response.json()
+                set_parameters(parameters)
+            })
+        }
+    })
+    fetch("./blob/registry/index.json").then(async (response) => {
+        const text = await response.text()
+        const platforms = text.split("\n").filter(line => line.trim() !== "").sort()
+        const platform_select = document.getElementById("vehicle-load-dynamics-selector")
+        platforms.forEach(platform => {
+            platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
+        })
+        
+        await l2f.initialized
+        await sleep(500)
+        const selectAllBtn = document.getElementById("vehicle-select-all-btn")
+        selectAllBtn.click()
+
+        const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
+        dynamicsSelector.value = "x500"
+        const parameters_response = await fetch(`./blob/registry/${dynamicsSelector.value}.json`)
+        const parameters = await parameters_response.json()
+        await set_parameters(parameters)
+
+        const sim_container_cover = document.getElementById("sim-container-cover")
+        sim_container_cover.style.display = "none"
+        const pause_button = document.getElementById("pause")
+        if(pause_button.innerText === "Resume"){
+            pause_button.click()
+        }
+        
+        const perturbation_id_input = document.getElementById("perturbation-id-input")
+        perturbation_id_input.value = "parameters.dynamics.mass"
+        perturbation_id_input.dispatchEvent(new Event("input"))
+        const event = new Event('keydown')
+        event.key = "Enter"
+        perturbation_id_input.dispatchEvent(event)
     })
 
 
