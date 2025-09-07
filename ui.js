@@ -58,7 +58,7 @@ function Matrix4FromRotMat(rotMat){
 class State{
     constructor(canvas, {devicePixelRatio, showAxes=false, capture=false, camera_position=[0.5, 0.5, 1], camera_distance=null, interactive=true, conta_url="/conta/"}){
         this.canvas = canvas
-        this.IS_MOBILE = true; //this.is_mobile();
+        this.IS_MOBILE = this.is_mobile();
         this.actualDevicePixelRatio = devicePixelRatio || window.devicePixelRatio
         this.devicePixelRatio = !this.IS_MOBILE ? this.actualDevicePixelRatio : Math.min(this.actualDevicePixelRatio || 1, 2)
         this.showAxes = showAxes

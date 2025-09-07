@@ -2,6 +2,9 @@
 #if defined(EMSCRIPTEN) || defined(STDLIB)
 #include "environment_helper.h"
 #endif
+#if defined(EMSCRIPTEN)
+#include <emscripten/val.h>
+#endif
 
 #include <stdint.h>
 
@@ -40,9 +43,6 @@ struct State{
     void observe(){
         rlt::observe(this->device, this->env, this->parameters, this->state, ENVIRONMENT::Observation{}, this->observation, this->rng);
     }
-    T get_observation(uint32_t observation_i){
-        return rlt::get(this->observation, 0, observation_i);
-    };
     T step(){
         ENVIRONMENT::State next_state;
         T dt = rlt::step(this->device, this->env, this->parameters, this->state, this->action, next_state, this->rng);
@@ -56,19 +56,38 @@ struct State{
     std::string get_state(){
         return rlt::json(device, this->env, this->parameters, this->state);
     }
-    std::string get_action(){
-        std::string action = "[";
-        for(TI i = 0; i < ENVIRONMENT::ACTION_DIM; i++){
-            action += std::to_string(rlt::get(this->action, 0, i));
-            if(i < ENVIRONMENT::ACTION_DIM - 1){
-                action += ", ";
-            }
+    mutable std::array<float, ENVIRONMENT::Observation::DIM> observation_cache{};
+    emscripten::val get_observation() const {
+        for(TI i = 0; i < ENVIRONMENT::Observation::DIM; i++){
+            observation_cache[i] = rlt::get(this->observation, 0, i);
         }
-        action += "]";
-        return action;
+        return emscripten::val(emscripten::typed_memory_view(ENVIRONMENT::Observation::DIM, observation_cache.data()));
+    }
+    mutable std::array<float, ENVIRONMENT::ACTION_DIM> action_cache{};
+    emscripten::val get_action() const {
+        for(TI i = 0; i < ENVIRONMENT::ACTION_DIM; i++){
+            action_cache[i] = rlt::get(this->action, 0, i);
+        }
+        return emscripten::val(emscripten::typed_memory_view(ENVIRONMENT::ACTION_DIM, action_cache.data()));
     }
     std::string get_ui(){
         return rlt::get_ui(this->device, this->env);
+    }
+
+    mutable std::array<float,3> position_cache{};
+    emscripten::val get_position() const {
+        position_cache[0] = this->state.position[0];
+        position_cache[1] = this->state.position[1];
+        position_cache[2] = this->state.position[2];
+        return emscripten::val(emscripten::typed_memory_view(3, position_cache.data()));
+    }
+    mutable std::array<float,4> orientation_cache{};
+    emscripten::val get_orientation() const {
+        orientation_cache[0] = this->state.orientation[0];
+        orientation_cache[1] = this->state.orientation[1];
+        orientation_cache[2] = this->state.orientation[2];
+        orientation_cache[3] = this->state.orientation[3];
+        return emscripten::val(emscripten::typed_memory_view(4, orientation_cache.data()));
     }
     void set_parameters(std::string params){
         rlt::from_json(device, this->env, params, this->parameters);
@@ -131,10 +150,6 @@ extern "C"{
         State& state = *(GET_STATE(state_ptr));
         state.observe();
     }
-    T get_observation(STATE_PTR_TYPE state_ptr, uint32_t observation_i){
-        State& state = *(GET_STATE(state_ptr));
-        return state.get_observation(observation_i);
-    }
     T step(STATE_PTR_TYPE state_ptr){
         State& state = *(GET_STATE(state_ptr));
         return state.step();
@@ -161,6 +176,8 @@ EMSCRIPTEN_BINDINGS(state_module){
         .function("get_parameters", &State::get_parameters)
         .function("get_state", &State::get_state)
         .function("get_action", &State::get_action)
+        .function("get_position", &State::get_position)
+        .function("get_orientation", &State::get_orientation)
         .function("set_parameters", &State::set_parameters)
         .function("set_state", &State::set_state)
         .property("action_dim", +[](const State& state) -> uint32_t { return ENVIRONMENT::ACTION_DIM; })

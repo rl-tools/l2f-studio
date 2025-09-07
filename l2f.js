@@ -118,8 +118,11 @@ export class L2F{
         return diff
     }
     update_render_state(){
-        this.render_states =  this.states.map(state => JSON.parse(state.get_state()))
-        this.render_actions = this.states.map(state => JSON.parse(state.get_action()))
+        this.render_states =  this.states.map(state => {return {
+            "position": state.get_position(),
+            "orientation": state.get_orientation()
+        }})
+        this.render_actions = this.states.map(state => state.get_action())
 
         
         const combined_state = this.render_states.map((state, i) => {
