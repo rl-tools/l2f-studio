@@ -1,10 +1,9 @@
 // import * as ui from "./ui.js"
 import createModule from "l2f-interface";
 import * as THREE from "three"
+import {Stats} from "stats.js"
 // const DEBUG = true
 const DEBUG = false
-
-import Stats from 'stats.js'
 
 function mean(a){
     return a.reduce((sum, val) => sum + val, 0) / a.length
