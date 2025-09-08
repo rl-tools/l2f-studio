@@ -537,15 +537,27 @@ function setupScrollIndicatorHiding() {
     const scrollIndicator = document.getElementById('scroll-indicator');
     const controlsBox = document.getElementById('controls-box');
     if (scrollIndicator && controlsBox) {
-        controlsBox.addEventListener('scroll', function() {
-            const isAtBottom = controlsBox.scrollTop + controlsBox.clientHeight >= controlsBox.scrollHeight - 1;
-            if (isAtBottom) {
-                console.log("reached bottom, hiding scroll indicator");
-                scrollIndicator.classList.add('hidden');
+        function checkOverflowAndUpdateIndicator() {
+            const hasOverflow = controlsBox.scrollHeight > controlsBox.clientHeight;
+            if (hasOverflow) {
+                const isAtBottom = controlsBox.scrollTop + controlsBox.clientHeight >= controlsBox.scrollHeight - 1;
+                if (isAtBottom) {
+                    scrollIndicator.style.display = 'none';
+                } else {
+                    scrollIndicator.style.display = 'flex';
+                    scrollIndicator.classList.remove('hidden');
+                }
             } else {
-                scrollIndicator.classList.remove('hidden');
+                scrollIndicator.style.display = 'none';
             }
-        });
+        }
+        
+        checkOverflowAndUpdateIndicator();
+        
+        controlsBox.addEventListener('scroll', checkOverflowAndUpdateIndicator);
+        
+        const resizeObserver = new ResizeObserver(checkOverflowAndUpdateIndicator);
+        resizeObserver.observe(controlsBox);
     }
 }
 

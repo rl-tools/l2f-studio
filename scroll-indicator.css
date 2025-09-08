@@ -9,7 +9,7 @@
     pointer-events: none;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 50%;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     width: 40px;
@@ -29,7 +29,7 @@
 
 @keyframes softPulse {
     0%, 100% { 
-        opacity: 0.9; 
+        opacity: 0.5; 
         transform: translateX(-50%) translateY(0px); 
     }
     50% { 
