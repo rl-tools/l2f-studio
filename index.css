@@ -284,6 +284,7 @@ canvas{
 #reference-trajectory-options{
     display:flex;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 
