@@ -81,9 +81,32 @@ body {
     white; z-index: 10;
 }
 #controls-box{
-    overflow: auto;
+    overflow-y: auto;
     flex: 0 0 auto;
-    max-height: 50svh;
+    max-height: 60svh;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: auto;
+    -ms-overflow-style: scrollbar;
+}
+
+#controls-box::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 12px;
+}
+
+#controls-box::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 8px;
+}
+
+#controls-box::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 8px;
+    border: 2px solid #f1f1f1;
+}
+
+#controls-box::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 .controls-container {
     display: flex;
