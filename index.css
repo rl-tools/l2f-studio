@@ -87,6 +87,7 @@ body {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: auto;
     -ms-overflow-style: scrollbar;
+    position: relative; /* For absolute positioning of scroll indicator */
 }
 
 #controls-box::-webkit-scrollbar {
@@ -108,6 +109,7 @@ body {
 #controls-box::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
 .controls-container {
     display: flex;
     justify-content: center;

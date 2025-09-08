@@ -533,6 +533,28 @@ if (document.readyState === 'loading') {
     main()
 }
 
+function setupScrollIndicatorHiding() {
+    const scrollIndicator = document.getElementById('scroll-indicator');
+    const controlsBox = document.getElementById('controls-box');
+    if (scrollIndicator && controlsBox) {
+        controlsBox.addEventListener('scroll', function() {
+            const isAtBottom = controlsBox.scrollTop + controlsBox.clientHeight >= controlsBox.scrollHeight - 1;
+            if (isAtBottom) {
+                console.log("reached bottom, hiding scroll indicator");
+                scrollIndicator.classList.add('hidden');
+            } else {
+                scrollIndicator.classList.remove('hidden');
+            }
+        });
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", setupScrollIndicatorHiding);
+} else {
+    setupScrollIndicatorHiding();
+}
+
 const drag_and_drop_overlay = document.getElementById('drag-and-drop-overlay');
 let drag_and_drop_counter = 0;
 
