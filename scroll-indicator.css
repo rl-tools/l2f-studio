@@ -1,20 +1,21 @@
+
 #scroll-indicator {
+    z-index: 1000;
     position: fixed;
-    bottom: 16px;
-    left: calc(50% - 6px);
+    bottom: 18px;
+    left: calc(50%);
     color: rgba(68, 68, 68, 0.9);
     font-size: 18px;
     pointer-events: none;
-    z-index: 1000;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 40px;
+    height: 40px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    animation: softPulse 2.5s ease-in-out infinite;
+    animation: softPulse 1.5s ease-in-out infinite;
     
     opacity: 0.8;
     transition: opacity 0.3s ease;
@@ -33,6 +34,6 @@
     }
     50% { 
         opacity: 1.0; 
-        transform: translateX(-50%) translateY(2px); 
+        transform: translateX(-50%) translateY(10px); 
     }
 }

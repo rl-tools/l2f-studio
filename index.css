@@ -84,31 +84,11 @@ body {
     overflow-y: auto;
     flex: 0 0 auto;
     max-height: 60svh;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: auto;
-    -ms-overflow-style: scrollbar;
-    position: relative; /* For absolute positioning of scroll indicator */
 }
+#controls-box, #controls-box * { box-sizing: border-box; }
+#controls-box .full-width { inline-size: 100%; min-inline-size: 0; }
 
-#controls-box::-webkit-scrollbar {
-    -webkit-appearance: none;
-    width: 12px;
-}
-
-#controls-box::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 8px;
-}
-
-#controls-box::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 8px;
-    border: 2px solid #f1f1f1;
-}
-
-#controls-box::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
 
 .controls-container {
     display: flex;
