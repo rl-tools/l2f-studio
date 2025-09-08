@@ -72,7 +72,7 @@ class Policy{
     }
     get_observation(state, obs) {
         let vehicle_state = null
-        const full_observation = state.get_observation()
+        const full_observation = Array.from(state.get_observation())
         console.assert(full_observation.length > 18, "Observation is smaller than base observation")
         const get_state = () => {
             if (vehicle_state === null) {
@@ -132,7 +132,7 @@ class Policy{
         return states.map((state, i) => {
             state.observe()
             const observation_description = document.getElementById("observations").observation
-            let input = math.matrix([observation_description.split(".").map(x => Array.from(this.get_observation(state, x))).flat()])
+            let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
             const reference = references[i]
             reference.forEach((x, i) => {
                 const value_raw = input._data[0][i] - x;

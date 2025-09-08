@@ -119,10 +119,10 @@ export class L2F{
     }
     update_render_state(){
         this.render_states =  this.states.map(state => {return {
-            "position": state.get_position(),
-            "orientation": state.get_orientation()
+            "position": Array.from(state.get_position()),
+            "orientation": Array.from(state.get_orientation())
         }})
-        this.render_actions = this.states.map(state => state.get_action())
+        this.render_actions = this.states.map(state => Array.from(state.get_action()))
 
         
         const combined_state = this.render_states.map((state, i) => {
