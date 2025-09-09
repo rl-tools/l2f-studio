@@ -1,9 +1,10 @@
 
 #scroll-indicator {
     z-index: 1000;
-    position: fixed;
+    position: absolute;
     bottom: 18px;
-    left: calc(50%);
+    left: 50%;
+    transform: translateX(-50%);
     color: rgba(68, 68, 68, 0.9);
     font-size: 18px;
     pointer-events: none;
