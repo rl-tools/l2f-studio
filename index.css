@@ -242,6 +242,7 @@ canvas{
     font-family: monospace;
     font-size: 80%;
     width: 100%;
+    min-width: 15rem;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
@@ -267,7 +268,7 @@ canvas{
 #policy-container{
     display: grid;
     grid-template-columns: auto auto;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto max-content;
     gap: 10px;
     padding-left: 4px;
     border-left: 2px solid black;
