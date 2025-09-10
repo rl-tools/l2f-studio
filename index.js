@@ -402,7 +402,19 @@ async function main() {
 
     const sim_container = document.getElementById("sim-container")
     proxy_controller = new ProxyController(new Policy(model))
-    const l2f = new L2F(sim_container, 10, proxy_controller, seed)
+
+
+    const platforms_text = await (await fetch("./blob/registry/index.json")).text()
+    const platforms = platforms_text.split("\n").filter(line => line.trim() !== "").sort()
+    const platform_select = document.getElementById("vehicle-load-dynamics-selector")
+    platforms.forEach(platform => {
+        platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
+    })
+    platform_select.value = "x500"
+
+    const default_parameters = await (await fetch(`./blob/registry/${platform_select.value}.json`)).json()
+
+    const l2f = new L2F(sim_container, Array(10).fill(default_parameters), proxy_controller, seed)
 
     l2f.state_update_callbacks.push((states) => {
         const vehicle_container = document.getElementById("vehicle-list")
@@ -445,8 +457,27 @@ async function main() {
 
     })
 
+    l2f.initialized.then(async () => {
+        await parameter_manager.initialized
+        const sim_container_cover = document.getElementById("sim-container-cover")
+        sim_container_cover.style.display = "none"
+        const pause_button = document.getElementById("pause")
+        if(pause_button.innerText === "Resume"){
+            pause_button.click()
+        }
+
+        const perturbation_id_input = document.getElementById("perturbation-id-input")
+        perturbation_id_input.value = "parameters.dynamics.mass"
+        perturbation_id_input.dispatchEvent(new Event("input"))
+        const event = new Event('keydown')
+        event.key = "Enter"
+        perturbation_id_input.dispatchEvent(event)
+    })
+
+    
+
     const parameter_manager = new ParameterManager(l2f)
-    const sim_controls = new SimControls(l2f, proxy_controller, parameter_manager)
+    const sim_controls = new SimControls(l2f, proxy_controller)
 
 
     const set_parameters = async (parameters) => {
@@ -461,9 +492,7 @@ async function main() {
         })
         console.log("setting parameters for vehicles: ", ids)
         console.log("parameters: ", parameters)
-        parameter_manager.set_parameters(ids, ids.map(() => parameters))
-        await l2f.initialized
-        await l2f.ui.episode_init_multi(l2f.ui_state, l2f.parameters)
+        await l2f.set_parameters(ids, ids.map(() => parameters))
     }
     document.getElementById("vehicle-load-dynamics-btn-backend").addEventListener("change", async () => {
         const file = event.target.files[0];
@@ -484,44 +513,9 @@ async function main() {
         }
         else{
             const platform = document.getElementById("vehicle-load-dynamics-selector").value
-            fetch(`./blob/registry/${platform}.json`).then(async (response) => {
-                const parameters = await response.json()
-                set_parameters(parameters)
-            })
+            const parameters = await (await fetch(`./blob/registry/${platform}.json`)).json()
+            set_parameters(parameters)
         }
-    })
-    fetch("./blob/registry/index.json").then(async (response) => {
-        const text = await response.text()
-        const platforms = text.split("\n").filter(line => line.trim() !== "").sort()
-        const platform_select = document.getElementById("vehicle-load-dynamics-selector")
-        platforms.forEach(platform => {
-            platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
-        })
-        
-        await l2f.initialized
-        await sleep(500)
-        const selectAllBtn = document.getElementById("vehicle-select-all-btn")
-        selectAllBtn.click()
-
-        const dynamicsSelector = document.getElementById("vehicle-load-dynamics-selector")
-        dynamicsSelector.value = "x500"
-        const parameters_response = await fetch(`./blob/registry/${dynamicsSelector.value}.json`)
-        const parameters = await parameters_response.json()
-        await set_parameters(parameters)
-
-        const sim_container_cover = document.getElementById("sim-container-cover")
-        sim_container_cover.style.display = "none"
-        const pause_button = document.getElementById("pause")
-        if(pause_button.innerText === "Resume"){
-            pause_button.click()
-        }
-        
-        const perturbation_id_input = document.getElementById("perturbation-id-input")
-        perturbation_id_input.value = "parameters.dynamics.mass"
-        perturbation_id_input.dispatchEvent(new Event("input"))
-        const event = new Event('keydown')
-        event.key = "Enter"
-        perturbation_id_input.dispatchEvent(event)
     })
 
 

@@ -1,21 +1,13 @@
 export class SimControls{
-    constructor(l2f, policy, parameter_manager){
+    constructor(l2f, policy){
         this.policy = policy
         const num_vehicles_input = document.getElementById("num-vehicles")
         num_vehicles_input.addEventListener("input", async () => {
-            const diff = await l2f.change_num_quadrotors(parseInt(num_vehicles_input.value))
-            const perturbation_groups = document.getElementById("perturbation-groups")
-            const elements = Array.from(perturbation_groups.querySelectorAll(":scope ul > li"))
-            if(diff < 0){
-                elements.forEach(el => {
-                    el.original_values = el.original_values.slice(0, diff)
-                })
-            }
-            else{
-                elements.forEach(el => {
-                    el.original_values = el.original_values.concat(parameter_manager.get_values_from_path(el.path).slice(-diff))
-                })
-            }
+            let platform = document.getElementById("vehicle-load-dynamics-selector").value
+            platform = platform === "file" ? "crazyflie" : platform
+            const parameters = await (await fetch(`./blob/registry/${platform}.json`)).json()
+
+            const diff = await l2f.change_num_quadrotors(parseInt(num_vehicles_input.value), parameters)
         })
 
         const speed_slider = document.getElementById("speed-slider")

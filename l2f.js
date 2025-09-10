@@ -15,7 +15,7 @@ function std(x){
 }
 
 export class L2F{
-    constructor(parent, num_quadrotors, policy, seed){
+    constructor(parent, parameters, policy, seed){
 
         this.seed = seed
         this.request_pause = true
@@ -80,8 +80,12 @@ export class L2F{
 
         this.initialized = createModule().then(async (l2f_interface) => {
             this.l2f_interface = l2f_interface
-            this.states = [...Array(num_quadrotors)].map((_, i) =>new this.l2f_interface.State(this.seed + i));
-            this.parameters = this.states.map(state => JSON.parse(state.get_parameters()))
+            this.states = [...Array(parameters.length)].map((_, i) =>new this.l2f_interface.State(this.seed + i));
+            this.parameters = structuredClone(parameters)
+            this.states.forEach((state, i) => {
+                state.set_parameters(JSON.stringify(this.parameters[i]))
+            })
+            this.perturbed_parameters = structuredClone(parameters)
             if(DEBUG){
                 this.ui = ui
             }
@@ -103,16 +107,22 @@ export class L2F{
         this.dt = null
         this.references = null
     }
-    async change_num_quadrotors(num){
+    async change_num_quadrotors(num, parameters){
         const diff = num - this.states.length
         if(diff > 0){
             const new_states = [...Array(num - this.states.length)].map((_, i) =>new this.l2f_interface.State(this.seed + this.states.length + i));
+            // new_states.forEach((state, i) => {
+            //     state.set_parameters(JSON.stringify(parameters))
+            // })
             this.states = this.states.concat(new_states)
+            this.parameters = this.parameters.concat(new_states.map(_ => structuredClone(parameters)))
+            this.perturbed_parameters = this.perturbed_parameters.concat(new_states.map(_ => structuredClone(parameters)))
         }
         else{
             this.states = this.states.slice(0, num)
+            this.parameters = this.parameters.slice(0, num)
+            this.perturbed_parameters = this.perturbed_parameters.slice(0, num)
         }
-        this.parameters = this.states.map(state => JSON.parse(state.get_parameters()))
         this.update_render_state()
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         return diff
@@ -129,7 +139,7 @@ export class L2F{
             return {
                 "state": state,
                 "action": this.render_actions[i],
-                "parameters": this.parameters[i]
+                "parameters": this.perturbed_parameters[i]
             }
         })
         this.state_update_callbacks.forEach(callback => callback(combined_state))
@@ -146,7 +156,7 @@ export class L2F{
                     })
                 }
                 this.references_ui = references.map((reference, i) => {
-                    const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 20, 32, 32);
+                    const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 50, 32, 32);
                     const material = new THREE.MeshStandardMaterial({ color: 0xff4444 });
                     const ball = new THREE.Mesh(geometry, material);
                     const reference_ui_objects = this.ui_state.simulator.add(ball)
@@ -227,4 +237,21 @@ export class L2F{
             this.stats.end()
         }
     }
+    async set_parameters(ids, parameters){
+        await this.initialized
+        ids.forEach((id, i) => {
+            this.parameters[id] = structuredClone(parameters[i])
+            this.perturbed_parameters[id] = structuredClone(parameters[i])
+            this.states[id].set_parameters(JSON.stringify(parameters[i]))
+        })
+        await this.ui.episode_init_multi(this.ui_state, this.parameters)
+    }
+    async set_perturbed_parameters(ids, parameters){
+        await this.initialized
+        ids.forEach((id, i) => {
+            this.perturbed_parameters[id] = structuredClone(parameters[i])
+            this.states[id].set_parameters(JSON.stringify(parameters[i]))
+        })
+    }
+
 }
