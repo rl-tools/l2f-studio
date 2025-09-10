@@ -144,26 +144,36 @@ export class L2F{
         })
         this.state_update_callbacks.forEach(callback => callback(combined_state))
     }
+    remove_reference_markers(){
+        if(this.references !== null){
+            this.references_ui.forEach(ball => {
+                this.ui_state.simulator.remove(ball)
+            })
+        }
+        this.references_ui = []
+        this.references = null
+    }
+    update_reference_markers(references){
+        if(this.references === null || this.references.length !== references.length){
+            // create three.js reference ball
+            if(this.references !== null){
+                this.remove_reference_markers()
+            }
+            this.references_ui = references.map((reference, i) => {
+                const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 50, 32, 32);
+                const material = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+                const ball = new THREE.Mesh(geometry, material);
+                const reference_ui_objects = this.ui_state.simulator.add(ball)
+                return ball
+            })
+        }
+        this.references = references
+    }
     simulate_step(){
         const actions = this.policy.evaluate_step(this.states)
         const references = this.policy.get_reference(this.states)
         if(references !== null){
-            if(this.references === null || this.references.length !== references.length){
-                // create three.js reference ball
-                if(this.references !== null){
-                    this.references_ui.forEach(ball => {
-                        this.ui_state.simulator.remove(ball)
-                    })
-                }
-                this.references_ui = references.map((reference, i) => {
-                    const geometry = new THREE.SphereGeometry(Math.cbrt(this.parameters[i].dynamics.mass) / 50, 32, 32);
-                    const material = new THREE.MeshStandardMaterial({ color: 0xff4444 });
-                    const ball = new THREE.Mesh(geometry, material);
-                    const reference_ui_objects = this.ui_state.simulator.add(ball)
-                    return ball
-                })
-            }
-            this.references = references
+            this.update_reference_markers(references)
             this.references.forEach((reference, i) => {
                 this.references_ui[i].position.set(reference[0], reference[1], reference[2])
             })
@@ -245,6 +255,7 @@ export class L2F{
             this.states[id].set_parameters(JSON.stringify(parameters[i]))
         })
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
+        this.remove_reference_markers()
     }
     async set_perturbed_parameters(ids, parameters){
         await this.initialized
