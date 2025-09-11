@@ -37,7 +37,7 @@ jobs:
         run: sed -i 's/__PAGE_TITLE__/L2F Playground/g' index.html
       - name: Set Title for RAPTOR
         if: github.repository == 'rl-tools/raptor.rl.tools'
-        run: sed -i 's/__PAGE_TITLE__/RAPTOR: A Foundation Policy for Quadrotor Control/g' index.html
+        run: "sed -i 's/__PAGE_TITLE__/RAPTOR: A Foundation Policy for Quadrotor Control/g' index.html"
       - name: Setup Pages
         uses: actions/configure-pages@v5
 #      - name: Download dependencies
