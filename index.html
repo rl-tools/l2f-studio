@@ -264,6 +264,7 @@
                 <div id="video-container-inner" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; /* 16:9 aspect ratio */">
                 </div>
             </div>
+        </center>
             <div style="margin: 10px; max-width: 900px;">
                 This web app allows you to torture the <img src="./blob/logo.svg" style="width: 7rem; vertical-align: middle;"></img> foundation policy using different quadrotor models, reference trajectories and disturbances. 
                 You can reset the episodes by pressing "Sample Initial States". You can simulate step-by-step using "Pause on Reset" and then "Step" throught the episode.
@@ -275,7 +276,6 @@
                 <h4 style="margin: 0px; margin-top: 5px;">Reproducing Oscillations Caused by Linear Velocity Feedback Delays</h4>
                 You can actually reproduce the finding of the oscillations on the non-EKF-based quadrotors (Section 2.4.1) by replacing <code>LinearVelocity</code> with <code>LinearVelocityDelayed(2)</code> and loading dynamics parameters of a quadrotor with a thrust-to-weight ratio > 2 (any one except of the Crazyflie). <br> You can just paste <code>Position.OrientationRotationMatrix.LinearVelocityDelayed(2).AngularVelocityDelayed(0).ActionHistory(1)</code> and hit "Sample Initial States".
             </div>
-        </center>
     </div>
 </body>
 </html>
