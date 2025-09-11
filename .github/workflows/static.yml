@@ -21,7 +21,16 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
-jobs:
+jobs: 
+  # Step for the first repository
+  - name: Set Title for L2F Playground
+    if: github.repository == 'rl-tools/l2f-studio'
+    run: sed -i 's/__PAGE_TITLE__/L2F Playground/g' index.html
+
+  # Step for the second repository
+  - name: Set Title for RAPTOR
+    if: github.repository == 'rl-tools/raptor.rl.tools'
+    run: sed -i 's/__PAGE_TITLE__/RAPTOR: A Foundation Policy for Quadrotor Control/g' index.html
   # Single deploy job since we're just deploying
   deploy:
     environment:
