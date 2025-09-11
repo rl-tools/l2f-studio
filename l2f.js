@@ -250,9 +250,21 @@ export class L2F{
     async set_parameters(ids, parameters){
         await this.initialized
         ids.forEach((id, i) => {
+            const previous_parameters = this.parameters[id]
             this.parameters[id] = structuredClone(parameters[i])
             this.perturbed_parameters[id] = structuredClone(parameters[i])
             this.states[id].set_parameters(JSON.stringify(parameters[i]))
+            // the new parameters define the RPM range (all other state variables are natural and have the same scaling)
+            const previous_min_rpm = previous_parameters.dynamics.action_limit.min
+            const previous_max_rpm = previous_parameters.dynamics.action_limit.max
+            const min_rpm = parameters[i].dynamics.action_limit.min
+            const max_rpm = parameters[i].dynamics.action_limit.max
+            const state = JSON.parse(this.states[id].get_state())
+            state["rpm"].forEach((rpm, j) => {
+                const new_rpm = previous_min_rpm + (rpm - previous_min_rpm) * (max_rpm - min_rpm) / (previous_max_rpm - previous_min_rpm)
+                state["rpm"][j] = Math.max(Math.min(new_rpm, max_rpm), min_rpm)
+            })
+            this.states[id].set_state(JSON.stringify(state))
         })
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         this.remove_reference_markers()
