@@ -104,7 +104,8 @@ export class ParameterManager{
                                     // todo: batch this
                                     const percent = parseFloat(perturbation_slider.value)
                                     const original_value = found_values[0]
-                                    const new_value = percent > 0.5 ? (percent - 0.5) * 2 * (el.max - original_value) + original_value : (1 - (0.5 - percent) * 2) * (original_value - el.min) + el.min
+                                    // const new_value = percent > 0.5 ? (percent - 0.5) * 2 * (el.max - original_value) + original_value : (1 - (0.5 - percent) * 2) * (original_value - el.min) + el.min
+                                    const new_value = percent * (el.max - el.min) + el.min
                                     let new_values = l2f.states.map((state, i) => new_value)
                                     try{
                                         new_values = l2f.states.map((state, i) => eval(el.transform)(i, original_value, percent, new_value));
