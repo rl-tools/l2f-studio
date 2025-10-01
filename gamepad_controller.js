@@ -3,7 +3,7 @@ export class GamepadController{
     constructor(gamepad){
         this.actions = null
         this.actions_time = null
-        this.k_omega = 0.001;
+        this.k_omega = 1.0;
         gamepad.addListener((output) => {
             this.actions = output
             this.actions_time = performance.now()
@@ -70,6 +70,9 @@ export class GamepadController{
             const rpms_clipped = rpms.map(x=> x > 1 ? 1 : (x < -1 ? -1 : x))
             return rpms_clipped.map(x => x * 2 - 1)
         })
+    }
+    get_reference(states){
+        return null
     }
     reset() {
     }
