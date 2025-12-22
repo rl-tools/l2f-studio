@@ -6,8 +6,8 @@ export class Lissajous extends Trajectory{
             "scale": {"range": [0, 5], "default": 0.1},
             "A": {"range": [-1, 1], "default": 1},
             "B": {"range": [-1, 1], "default": 0.5},
-            "a": {"range": [0, 1], "default": 1},
-            "b": {"range": [0, 1], "default": 2},
+            "a": {"range": [0, 2], "default": 1},
+            "b": {"range": [0, 2], "default": 2},
             "delta": {"range": [0, 1], "default": 0.5},
             "phase": {"range": [0, 1], "default": 0.5},
         })
