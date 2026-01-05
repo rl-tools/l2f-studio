@@ -70,7 +70,7 @@ class Policy{
         this.step = 0
         this.policy_states = null
     }
-    get_observation(state, obs) {
+    get_observation(state, obs, reference) {
         let vehicle_state = null
         const full_observation = Array.from(state.get_observation())
         console.assert(full_observation.length > 18, "Observation is smaller than base observation")
@@ -97,6 +97,24 @@ class Policy{
                     return s["linear_velocity_history"][s["linear_velocity_history"].length - delay]
                 }
             }
+            case obs.startsWith("TrajectoryTrackingLookahead"):
+                const parameters_string = obs.split("(")[1].split(")")[0]
+                const parameters_split = parameters_string.split(",")
+                const num_steps = parseInt(parameters_split[0])
+                const step_interval = parseInt(parameters_split[1])
+                const current_position = full_observation.slice(0, 3)
+                const current_velocity = full_observation.slice(12, 15)
+                const flat_observation = new Array(num_steps).fill(0).map((_, step_i) => {
+                    const clip = (x, min, max) => x  < min ? min : (x > max ? max : x);
+                    const position_clip = x => clip(x, -1, 1)
+                    const velocity_clip = x => clip(x, -2, 2)
+                    return [...current_position.map((x, axis_i) => {
+                        return position_clip(x - reference[0][axis_i])
+                    }), ...current_velocity.map((x, axis_i) => {
+                        return velocity_clip(x - reference[0][3+axis_i])
+                    })]
+                }).flat()
+                return flat_observation
             case obs === "AngularVelocity":
                 return full_observation.slice(15, 18)
             case obs.startsWith("AngularVelocityDelayed"):{
@@ -131,15 +149,9 @@ class Policy{
         const references = this.get_reference(states)
         return states.map((state, i) => {
             state.observe()
-            const observation_description = document.getElementById("observations").observation
-            let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x)).flat()])
             const reference = references[i]
-            reference.forEach((x, i) => {
-                const value_raw = input._data[0][i] - x;
-                const clip = (x, min, max) => x  < min ? min : (x > max ? max : x);
-                const value_clip = i < 3 ? clip(value_raw, -1, 1) : clip(value_raw, -2, 2);
-                input._data[0][i] = value_clip
-            })
+            const observation_description = document.getElementById("observations").observation
+            let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x, reference)).flat()])
             const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
             this.policy_states[i] = new_state
             return output.valueOf()[0]
@@ -150,14 +162,19 @@ class Policy{
         this.policy_states = null
     }
     _get_reference(){
-        return trajectory.evaluate(this.step / 100)
+        const trajectory_rendered = new Array(500).fill(0).map((_, i) => {
+            return trajectory.evaluate((this.step + i) / 100)
+        })
+        return trajectory_rendered
     }
     get_reference(states){
         const ref = this._get_reference()
         return states.map((_, i) => {
-            const new_ref = ref.slice()
-            new_ref[trajectory_offset_axis] += trajectory_offset * i
-            return new_ref
+            return ref.map((step, j) => {
+                const step_copy = step.slice()
+                step_copy[trajectory_offset_axis] += trajectory_offset * i
+                return step_copy
+            })
         })
     }
 }
