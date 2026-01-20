@@ -22,6 +22,22 @@ async function sleep(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Mapping from platform names to conta mesh hashes
+const PLATFORM_MESH_MAP = {
+    "x500": "9602ffc2ffb77f62c4cf6fdc78fe67d32088870d",
+    "crazyflie": "b75f5120e17783744a8fac5e1ab69c2dce10f0e3",
+    "arpl": "775ba8559aeed800dbcdab93806601e39d84fede"
+}
+
+function addMeshToParameters(parameters, platform) {
+    if (!parameters.ui && PLATFORM_MESH_MAP[platform]) {
+        parameters.ui = {
+            enable: true,
+            model: PLATFORM_MESH_MAP[platform]
+        }
+    }
+    return parameters
+}
 
 class ProxyController {
     constructor(current_policy) {
@@ -451,6 +467,7 @@ async function main() {
     platform_select.value = param_override ? param_override : "x500";
 
     const default_parameters = await (await fetch(`./blob/registry/${platform_select.value}.json`)).json()
+    addMeshToParameters(default_parameters, platform_select.value)
 
     console.log("Waiting for trajectory to be initialized")
 
@@ -572,6 +589,7 @@ async function main() {
         else{
             const platform = document.getElementById("vehicle-load-dynamics-selector").value
             const parameters = await (await fetch(`./blob/registry/${platform}.json`)).json()
+            addMeshToParameters(parameters, platform)
             set_parameters(parameters)
         }
     })

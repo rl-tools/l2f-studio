@@ -1,3 +1,20 @@
+// Mapping from platform names to conta mesh hashes
+const PLATFORM_MESH_MAP = {
+    "x500": "9602ffc2ffb77f62c4cf6fdc78fe67d32088870d",
+    "crazyflie": "b75f5120e17783744a8fac5e1ab69c2dce10f0e3",
+    "arpl": "775ba8559aeed800dbcdab93806601e39d84fede"
+}
+
+function addMeshToParameters(parameters, platform) {
+    if (!parameters.ui && PLATFORM_MESH_MAP[platform]) {
+        parameters.ui = {
+            enable: true,
+            model: PLATFORM_MESH_MAP[platform]
+        }
+    }
+    return parameters
+}
+
 export class SimControls{
     constructor(l2f, policy){
         this.policy = policy
@@ -6,7 +23,7 @@ export class SimControls{
             let platform = document.getElementById("vehicle-load-dynamics-selector").value
             platform = platform === "file" ? "crazyflie" : platform
             const parameters = await (await fetch(`./blob/registry/${platform}.json`)).json()
-
+            addMeshToParameters(parameters, platform)
             const diff = await l2f.change_num_quadrotors(parseInt(num_vehicles_input.value), parameters)
         })
 
