@@ -83,20 +83,35 @@ class Policy{
             }
             return vehicle_state
         }
+        const clip = (x, min, max) => x  < min ? min : (x > max ? max : x);
+        const position_clip = x => clip(x, -1, 1)
+        const velocity_clip = x => clip(x, -2, 2)
+        const current_position = full_observation.slice(0, 3)
+        const current_velocity = full_observation.slice(12, 15)
         switch (true) {
-            case obs === "Position" || obs === "TrajectoryTrackingPosition":
-                return full_observation.slice(0, 3)
+            case obs === "Position" || obs === "TrajectoryTrackingPosition":{
+                const reference_index = this.get_reference_index(trajectory, 0)
+                const target_position = trajectory[reference_index].slice(0, 3)
+                return current_position.map((x, axis_i) => {
+                    return position_clip(x - target_position[axis_i])
+                })
+            }
             case obs === "OrientationRotationMatrix":
                 return full_observation.slice(3, 12)
-            case obs === "LinearVelocity" || obs === "TrajectoryTrackingLinearVelocity":
-                return full_observation.slice(12, 15)
+            case obs === "LinearVelocity" || obs === "TrajectoryTrackingLinearVelocity":{
+                const reference_index = this.get_reference_index(trajectory, 0)
+                const target_velocity = trajectory[reference_index].slice(3, 6)
+                return current_velocity.map((x, axis_i) => {
+                    return velocity_clip(x - target_velocity[axis_i])
+                })
+            }
             case obs.startsWith("LinearVelocityDelayed"):{
                 const delay_string = obs.split("(")[1].split(")")[0]
                 const delay = parseInt(delay_string)
                 if (delay === 0) {
                     return full_observation.slice(12, 15)
                 } else {
-                    const s = get_state(0)
+                    const s = get_state()
                     return s["linear_velocity_history"][s["linear_velocity_history"].length - delay]
                 }
             }
@@ -105,12 +120,7 @@ class Policy{
                 const parameters_split = parameters_string.split(",")
                 const num_steps = parseInt(parameters_split[0])
                 const step_interval = parseInt(parameters_split[1])
-                const current_position = full_observation.slice(0, 3)
-                const current_velocity = full_observation.slice(12, 15)
                 const flat_observation = new Array(num_steps).fill(0).map((_, step_i) => {
-                    const clip = (x, min, max) => x  < min ? min : (x > max ? max : x);
-                    const position_clip = x => clip(x, -1, 1)
-                    const velocity_clip = x => clip(x, -2, 2)
                     const reference_index = this.get_reference_index(trajectory, step_i * step_interval)
                     return [...current_position.map((x, axis_i) => {
                         return position_clip(x - trajectory[reference_index][axis_i])
@@ -127,7 +137,7 @@ class Policy{
                 if (delay === 0) {
                     return full_observation.slice(15, 18)
                 } else {
-                    const s = get_state(0)
+                    const s = get_state()
                     return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
                 }
             }

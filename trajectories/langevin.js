@@ -1,5 +1,5 @@
 import { Trajectory } from "./base.js"
-import { Rand, PRNG } from "rand-seed";
+import { Rand } from "rand-seed";
 
 
 export class SecondOrderLangevin extends Trajectory {
@@ -20,12 +20,12 @@ export class SecondOrderLangevin extends Trajectory {
             // seed
             seed:  { range: [0, 10000], default: 1337 }
         })
-        this.precompute()
     }
 
-    set_parameter(key, value){
-        super.set_parameter(key, value)
+    parameters_updated() {
+        // Precompute the Langevin dynamics first, then generate trajectory
         this.precompute()
+        super.parameters_updated()
     }
 
     precompute() {
