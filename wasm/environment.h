@@ -47,11 +47,16 @@ namespace builder{
         static constexpr bool LANGEVIN = false;
     };
 
-    using PARAMETERS_SPEC = ParametersBaseSpecification<T, TI, 4, REWARD_FUNCTION>;
-    using PARAMETERS_TYPE = ParametersObservationDelay<ParametersObservationDelaySpecification<T, TI, ParametersTrajectory<ParametersTrajectorySpecification<T, TI, TRAJECTORY_OPTIONS, ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>>>>>;
+    static constexpr TI EPISODE_LENGTH_S = 5;
+    static constexpr TI SIMULATION_FREQUENCY = 100;
+    static constexpr TI EPISODE_STEP_LIMIT_OUTER = EPISODE_LENGTH_S * SIMULATION_FREQUENCY;
+    static constexpr TI TRAJECTORY_LENGTH = EPISODE_STEP_LIMIT_OUTER;
+    static constexpr TI TRAJECTORY_DT = 1000000 / SIMULATION_FREQUENCY; // in microseconds
+
+    using PARAMETERS_SPEC = ParametersBaseSpecification<T, TI, 4, EPISODE_STEP_LIMIT_OUTER, REWARD_FUNCTION>;
+    using PARAMETERS_TYPE = ParametersObservationDelay<ParametersObservationDelaySpecification<T, TI, ParametersTrajectory<ParametersTrajectorySpecification<T, TI, TRAJECTORY_LENGTH, TRAJECTORY_DT, ParametersDomainRandomization<ParametersDomainRandomizationSpecification<T, TI, DOMAIN_RANDOMIZATION_OPTIONS, ParametersDisturbances<ParametersSpecification<T, TI, ParametersBase<PARAMETERS_SPEC>>>>>>>>>;
 
     static constexpr typename PARAMETERS_TYPE::Dynamics dynamics = parameters::dynamics::registry<MODEL, PARAMETERS_SPEC>;
-    static constexpr TI SIMULATION_FREQUENCY = 100;
     static constexpr typename PARAMETERS_TYPE::Integration integration = {
         1.0/((T)SIMULATION_FREQUENCY) // integration dt
     };
@@ -96,15 +101,15 @@ namespace builder{
         typename PARAMETERS_TYPE::Disturbances::UnivariateGaussian{0, 0}, // random_force;
         typename PARAMETERS_TYPE::Disturbances::UnivariateGaussian{0, 0} // random_torque;
     };
-    static constexpr typename PARAMETERS_TYPE::Trajectory trajectory = {
-        {0.5, 0.5}, // mixture weights
-        typename PARAMETERS_TYPE::Trajectory::Langevin{
-            1.00, // gamma
-            2.00, // omega
-            0.50, // sigma
-            0.01 // alpha
+
+    static constexpr typename PARAMETERS_TYPE::Trajectory trajectory = {};
+    static constexpr typename PARAMETERS_TYPE::TrajectoryParameters trajectory_parameters = {
+        parameters::trajectories::Type::LISSAJOUS,
+        {
+            parameters::trajectories::lissajous::default_parameters<T>
         }
     };
+
     static constexpr PARAMETERS_TYPE nominal_parameters = {
         {
             {
@@ -118,7 +123,8 @@ namespace builder{
                 }, // Disturbances
                 domain_randomization
             }, // DomainRandomization
-            trajectory // Trajectory
+            trajectory, // Trajectory
+            trajectory_parameters
         }, // ObservationDelay
         0,
         0

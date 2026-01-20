@@ -175,7 +175,8 @@ export class L2F{
         if(references !== null){
             this.update_reference_markers(references)
             this.references.forEach((reference, i) => {
-                this.references_ui[i].position.set(reference[0][0], reference[0][1], reference[0][2])
+                const reference_index = this.policy.get_reference_index(reference, 0)
+                this.references_ui[i].position.set(reference[reference_index][0], reference[reference_index][1], reference[reference_index][2])
             })
         }
         console.assert(actions.length === this.states.length, "Action dimension mismatch")

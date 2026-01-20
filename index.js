@@ -36,6 +36,9 @@ class ProxyController {
     get_reference(states){
         return this.policy.get_reference(states)
     }
+    get_reference_index(trajectory, offset){
+        return this.policy.get_reference_index(trajectory, offset)
+    }
 }
 class MultiController {
     constructor(Controller) {
@@ -70,7 +73,7 @@ class Policy{
         this.step = 0
         this.policy_states = null
     }
-    get_observation(state, obs, reference) {
+    get_observation(state, obs, trajectory) {
         let vehicle_state = null
         const full_observation = Array.from(state.get_observation())
         console.assert(full_observation.length > 18, "Observation is smaller than base observation")
@@ -108,10 +111,11 @@ class Policy{
                     const clip = (x, min, max) => x  < min ? min : (x > max ? max : x);
                     const position_clip = x => clip(x, -1, 1)
                     const velocity_clip = x => clip(x, -2, 2)
+                    const reference_index = this.get_reference_index(trajectory, step_i * step_interval)
                     return [...current_position.map((x, axis_i) => {
-                        return position_clip(x - reference[0][axis_i])
+                        return position_clip(x - trajectory[reference_index][axis_i])
                     }), ...current_velocity.map((x, axis_i) => {
-                        return velocity_clip(x - reference[0][3+axis_i])
+                        return velocity_clip(x - trajectory[reference_index][3+axis_i])
                     })]
                 }).flat()
                 return flat_observation
@@ -162,10 +166,7 @@ class Policy{
         this.policy_states = null
     }
     _get_reference(){
-        const trajectory_rendered = new Array(500).fill(0).map((_, i) => {
-            return trajectory.evaluate((this.step + i) / 100)
-        })
-        return trajectory_rendered
+        return trajectory.trajectory
     }
     get_reference(states){
         const ref = this._get_reference()
@@ -176,6 +177,13 @@ class Policy{
                 return step_copy
             })
         })
+    }
+    get_reference_index(reference, offset){
+        const real_step = this.step + offset
+        const offset_interval = Math.floor(real_step / reference.length)
+        const offset_index = real_step % reference.length
+        const forward = offset_interval % 2 === 0
+        return forward ? offset_index : reference.length - offset_index - 1
     }
 }
 
@@ -282,16 +290,17 @@ async function main() {
             slider.addEventListener("input", () => {
                 labels[1].textContent = slider.value
                 trajectory.set_parameter(key, parseFloat(slider.value))
+                trajectory.parameters_updated()
             })
 
             trajectory_options_container.appendChild(template)
         }
     })
-    trajectory_select.dispatchEvent(new Event("change"))
     document.getElementById("reference-trajectory-reset").addEventListener("click", () => {
         trajectory_select.dispatchEvent(new Event("change"))
-
     })
+    document.getElementById("reference-trajectory-reset").dispatchEvent(new Event("click"))
+
 
     document.getElementById("default-checkpoint-btn").addEventListener("click", async () => {
         load_model(file_url)
@@ -299,7 +308,7 @@ async function main() {
     document.getElementById("load-checkpoint-btn").addEventListener("click", async () => {
         document.getElementById("load-checkpoint-btn-backend").click();
     })
-    document.getElementById("load-checkpoint-btn-backend").addEventListener("change", async () => {
+    document.getElementById("load-checkpoint-btn-backend").addEventListener("change", async (event) => {
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
@@ -427,9 +436,13 @@ async function main() {
     platforms.forEach(platform => {
         platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
     })
-    platform_select.value = "x500"
+
+    const param_override = urlParams.get('parameters');
+    platform_select.value = param_override ? param_override : "x500";
 
     const default_parameters = await (await fetch(`./blob/registry/${platform_select.value}.json`)).json()
+
+    console.log("Waiting for trajectory to be initialized")
 
     const l2f = new L2F(sim_container, Array(10).fill(default_parameters), proxy_controller, seed)
 
@@ -441,6 +454,7 @@ async function main() {
             states.forEach((state, i) => {
                 const vehicle_pre = vehicle_template.content.cloneNode(true)
                 const vehicle = vehicle_pre.querySelector(".vehicle")
+                vehicle.dataset.vehicleId = i
                 vehicle.querySelector(".vehicle-title").textContent = `Vehicle ${i}`
                 // vehicle.querySelector(".vehicle-id").textContent = JSON.stringify(state.parameters.dynamics, null, 2)
                 vehicle_container.appendChild(vehicle)
@@ -500,18 +514,23 @@ async function main() {
     const set_parameters = async (parameters) => {
         const vehicle_container = document.getElementById("vehicle-list")
         const elements = Array.from(vehicle_container.querySelectorAll(":scope .vehicle"))
-        const checkboxes = elements.map(vehicle => vehicle.querySelector(".vehicle-checkbox"))
-        const ids = []
-        checkboxes.forEach((checkbox, i) => {
-            if (checkbox.checked) {
-                ids.push(i)
+        let ids = []
+        elements.forEach(vehicle => {
+            const checkbox = vehicle.querySelector(".vehicle-checkbox")
+            if (checkbox && checkbox.checked) {
+                const vehicleId = parseInt(vehicle.dataset.vehicleId, 10)
+                ids.push(vehicleId)
             }
         })
+        // If no checkboxes are checked, update all vehicles
+        if (ids.length === 0) {
+            ids = elements.map(vehicle => parseInt(vehicle.dataset.vehicleId, 10))
+        }
         console.log("setting parameters for vehicles: ", ids)
         console.log("parameters: ", parameters)
         await l2f.set_parameters(ids, ids.map(() => parameters))
     }
-    document.getElementById("vehicle-load-dynamics-btn-backend").addEventListener("change", async () => {
+    document.getElementById("vehicle-load-dynamics-btn-backend").addEventListener("change", async (event) => {
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
@@ -522,6 +541,7 @@ async function main() {
             };
             reader.readAsText(file);
         }
+        event.target.value = "";
     })
     document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
         if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
