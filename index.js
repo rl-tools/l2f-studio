@@ -22,21 +22,43 @@ async function sleep(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Mapping from platform names to conta mesh hashes
+// Platform mesh hashes and parameter history management
 const PLATFORM_MESH_MAP = {
     "x500": "9602ffc2ffb77f62c4cf6fdc78fe67d32088870d",
     "crazyflie": "b75f5120e17783744a8fac5e1ab69c2dce10f0e3",
     "arpl": "775ba8559aeed800dbcdab93806601e39d84fede"
 }
 
-function addMeshToParameters(parameters, platform) {
-    if (!parameters.ui && PLATFORM_MESH_MAP[platform]) {
-        parameters.ui = {
-            enable: true,
-            model: PLATFORM_MESH_MAP[platform]
-        }
+const addMeshToParameters = (params, platform) => 
+    (!params.ui && PLATFORM_MESH_MAP[platform]) ? Object.assign(params, { ui: { enable: true, model: PLATFORM_MESH_MAP[platform] }}) : params
+
+const paramStore = {
+    historyKey: "l2f_parameter_history",
+    lastSelectedKey: "l2f_last_selected_parameters",
+    maxEntries: 10,
+    getHistory: () => JSON.parse(localStorage.getItem(paramStore.historyKey) || "[]"),
+    getLastSelected: () => localStorage.getItem(paramStore.lastSelectedKey),
+    setLastSelected: (v) => localStorage.setItem(paramStore.lastSelectedKey, v),
+    addToHistory(name, parameters) {
+        const history = [{ name, parameters, timestamp: Date.now() }, 
+            ...this.getHistory().filter(e => e.name !== name)].slice(0, this.maxEntries)
+        localStorage.setItem(this.historyKey, JSON.stringify(history))
+        return history
     }
-    return parameters
+}
+
+function populateParameterDropdown(select, platforms, history) {
+    const makeOpt = (value, text, title) => Object.assign(document.createElement("option"), { value, textContent: text, title: title || "" })
+    const makeGroup = (label, items) => {
+        const g = Object.assign(document.createElement("optgroup"), { label })
+        items.forEach(i => g.appendChild(i))
+        return g
+    }
+    select.innerHTML = ""
+    select.appendChild(makeGroup("Presets", platforms.map(p => makeOpt(p, p))))
+    select.appendChild(makeOpt("file", "📂 From file..."))
+    if (history.length) select.appendChild(makeGroup("History", 
+        history.map(e => makeOpt(`custom:${e.name}`, `📁 ${e.name}`, new Date(e.timestamp).toLocaleString()))))
 }
 
 class ProxyController {
@@ -459,15 +481,53 @@ async function main() {
     const platforms_text = await (await fetch("./blob/registry/index.json")).text()
     const platforms = platforms_text.split("\n").filter(line => line.trim() !== "").sort()
     const platform_select = document.getElementById("vehicle-load-dynamics-selector")
-    platforms.forEach(platform => {
-        platform_select.innerHTML += `<option value="${platform}">${platform}</option>`
-    })
+    
+    // Populate dropdown with presets and custom history
+    const paramHistory = paramStore.getHistory()
+    populateParameterDropdown(platform_select, platforms, paramHistory)
 
+    // Determine which parameters to load (URL override > last selected > default)
     const param_override = urlParams.get('parameters');
-    platform_select.value = param_override ? param_override : "x500";
+    const lastSelected = paramStore.getLastSelected()
+    let selectedValue = param_override ? param_override : (lastSelected || "x500")
+    
+    // Validate that the selected value exists in the dropdown
+    const validOptions = Array.from(platform_select.options).map(o => o.value)
+    if (!validOptions.includes(selectedValue)) {
+        selectedValue = "x500"
+    }
+    platform_select.value = selectedValue
 
-    const default_parameters = await (await fetch(`./blob/registry/${platform_select.value}.json`)).json()
-    addMeshToParameters(default_parameters, platform_select.value)
+    // Load the selected parameters
+    let default_parameters
+    if (selectedValue.startsWith("custom:")) {
+        const customName = selectedValue.replace("custom:", "")
+        const historyEntry = paramHistory.find(e => e.name === customName)
+        if (historyEntry) {
+            default_parameters = structuredClone(historyEntry.parameters)
+        } else {
+            // Fallback to x500 if custom entry not found
+            default_parameters = await (await fetch(`./blob/registry/x500.json`)).json()
+            addMeshToParameters(default_parameters, "x500")
+        }
+    } else if (selectedValue !== "file") {
+        default_parameters = await (await fetch(`./blob/registry/${selectedValue}.json`)).json()
+        addMeshToParameters(default_parameters, selectedValue)
+    } else {
+        // Fallback for "file" option
+        default_parameters = await (await fetch(`./blob/registry/x500.json`)).json()
+        addMeshToParameters(default_parameters, "x500")
+    }
+    
+    // Reset trajectory steps to all zeros
+    if (default_parameters.trajectory && default_parameters.trajectory.steps) {
+        default_parameters.trajectory.steps = default_parameters.trajectory.steps.map(() => ({
+            position: [0, 0, 0],
+            yaw: 0,
+            linear_velocity: [0, 0, 0],
+            yaw_velocity: 0
+        }))
+    }
 
     console.log("Waiting for trajectory to be initialized")
 
@@ -575,6 +635,19 @@ async function main() {
             reader.onload = async function (e) {
                 console.log(`Loaded dynamics from ${file.name}`)
                 const parameters = JSON.parse(e.target.result)
+                
+                // Generate a name from filename (remove .json extension)
+                const name = file.name.replace(/\.json$/i, "")
+                
+                // Add to history and update dropdown
+                const newHistory = paramStore.addToHistory(name, parameters)
+                populateParameterDropdown(platform_select, platforms, newHistory)
+                
+                // Select the newly added custom parameter
+                const customValue = `custom:${name}`
+                platform_select.value = customValue
+                paramStore.setLastSelected(customValue)
+                
                 set_parameters(parameters)
             };
             reader.readAsText(file);
@@ -582,14 +655,31 @@ async function main() {
         event.target.value = "";
     })
     document.getElementById("vehicle-load-dynamics-btn").addEventListener("click", async () => {
-        if (document.getElementById("vehicle-load-dynamics-selector").value === "file") {
+        const selectedValue = document.getElementById("vehicle-load-dynamics-selector").value
+        
+        if (selectedValue === "file") {
             document.getElementById("vehicle-load-dynamics-btn-backend").click();
             return;
         }
-        else{
-            const platform = document.getElementById("vehicle-load-dynamics-selector").value
+        else if (selectedValue.startsWith("custom:")) {
+            // Load from history
+            const customName = selectedValue.replace("custom:", "")
+            const history = paramStore.getHistory()
+            const historyEntry = history.find(e => e.name === customName)
+            if (historyEntry) {
+                const parameters = structuredClone(historyEntry.parameters)
+                paramStore.setLastSelected(selectedValue)
+                set_parameters(parameters)
+            } else {
+                console.error(`Custom parameter "${customName}" not found in history`)
+            }
+        }
+        else {
+            // Load preset
+            const platform = selectedValue
             const parameters = await (await fetch(`./blob/registry/${platform}.json`)).json()
             addMeshToParameters(parameters, platform)
+            paramStore.setLastSelected(selectedValue)
             set_parameters(parameters)
         }
     })

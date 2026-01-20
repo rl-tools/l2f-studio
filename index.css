@@ -35,6 +35,10 @@ body {
 #vehicle-load-dynamics-btn-backend{
     display: none;
 }
+#vehicle-load-dynamics-selector optgroup {
+    font-weight: bold;
+    font-style: normal;
+}
 .vehicle{
     display: block;
     margin: 10px;
