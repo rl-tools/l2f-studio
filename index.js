@@ -128,20 +128,14 @@ class Policy{
         const current_velocity = full_observation.slice(12, 15)
         switch (true) {
             case obs === "Position" || obs === "TrajectoryTrackingPosition":{
-                const reference_index = this.get_reference_index(trajectory, 0)
-                const target_position = trajectory[reference_index].slice(0, 3)
-                return current_position.map((x, axis_i) => {
-                    return position_clip(x - target_position[axis_i])
-                })
+                const ref = this.get_reference_point(trajectory, 0)
+                return current_position.map((x, axis_i) => position_clip(x - ref[axis_i]))
             }
             case obs === "OrientationRotationMatrix":
                 return full_observation.slice(3, 12)
             case obs === "LinearVelocity" || obs === "TrajectoryTrackingLinearVelocity":{
-                const reference_index = this.get_reference_index(trajectory, 0)
-                const target_velocity = trajectory[reference_index].slice(3, 6)
-                return current_velocity.map((x, axis_i) => {
-                    return velocity_clip(x - target_velocity[axis_i])
-                })
+                const ref = this.get_reference_point(trajectory, 0)
+                return current_velocity.map((x, axis_i) => velocity_clip(x - ref[3 + axis_i]))
             }
             case obs.startsWith("LinearVelocityDelayed"):{
                 const delay_string = obs.split("(")[1].split(")")[0]
@@ -159,12 +153,9 @@ class Policy{
                 const num_steps = parseInt(parameters_split[0])
                 const step_interval = parseInt(parameters_split[1])
                 const flat_observation = new Array(num_steps).fill(0).map((_, step_i) => {
-                    const reference_index = this.get_reference_index(trajectory, step_i * step_interval)
-                    return [...current_position.map((x, axis_i) => {
-                        return position_clip(x - trajectory[reference_index][axis_i])
-                    }), ...current_velocity.map((x, axis_i) => {
-                        return velocity_clip(x - trajectory[reference_index][3+axis_i])
-                    })]
+                    const ref = this.get_reference_point(trajectory, step_i * step_interval)
+                    return [...current_position.map((x, axis_i) => position_clip(x - ref[axis_i])),
+                            ...current_velocity.map((x, axis_i) => velocity_clip(x - ref[3 + axis_i]))]
                 }).flat()
                 return flat_observation
             case obs === "AngularVelocity":
@@ -228,10 +219,19 @@ class Policy{
     }
     get_reference_index(reference, offset){
         const real_step = this.step + offset
-        const offset_interval = Math.floor(real_step / reference.length)
-        const offset_index = real_step % reference.length
-        const forward = offset_interval % 2 === 0
-        return forward ? offset_index : reference.length - offset_index - 1
+        const cycle = Math.floor(real_step / reference.length)
+        const phase = real_step % reference.length
+        return cycle % 2 === 0 ? phase : reference.length - 1 - phase
+    }
+    get_reference_point(reference, offset){
+        const real_step = this.step + offset
+        const cycle = Math.floor(real_step / reference.length)
+        const phase = real_step % reference.length
+        const forward = cycle % 2 === 0
+        const idx = forward ? phase : reference.length - 1 - phase
+        const p = reference[idx]
+        const dir = forward ? 1 : -1
+        return [p[0], p[1], p[2], p[3] * dir, p[4] * dir, p[5] * dir]
     }
 }
 

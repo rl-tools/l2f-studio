@@ -5,7 +5,7 @@ export class Trajectory{
         for(const [name, param] of Object.entries(this.parameters)){
             this.parameter_values[name] = param.default
         }
-        this.length = 50 // seconds
+        this.length = 10 // seconds
         this.sample_rate = 100 // Hz = control frequency
         this.num_steps = this.length * this.sample_rate
         this.parameters_updated()

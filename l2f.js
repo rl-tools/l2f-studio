@@ -240,8 +240,8 @@ export class L2F{
         if(references !== null){
             this.update_reference_markers(references)
             this.references.forEach((reference, i) => {
-                const reference_index = this.policy.get_reference_index(reference, 0)
-                const target = reference[reference_index]
+                const idx = this.policy.get_reference_index(reference, 0)
+                const target = reference[idx]
                 this.references_ui[i].position.set(target[0], target[1], target[2])
                 // Track position error
                 const pos = this.render_states?.[i]?.position || [0, 0, 0]
