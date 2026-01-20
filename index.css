@@ -49,10 +49,7 @@ body {
 .vehicle-body{
     margin-left: 10px;
 }
-.vehicle-position{
-    font-family: monospace;
-}
-.vehicle-action{
+.vehicle-position, .vehicle-avg-error, .vehicle-t2w-t2i, .vehicle-action {
     font-family: monospace;
 }
 #sidebar-resizer {

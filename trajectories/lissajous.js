@@ -2,31 +2,29 @@ import { Trajectory } from "./base.js"
 export class Lissajous extends Trajectory{
     constructor(){
         super({
-            "period": {"range": [1, 15], "default": 10},
-            "scale": {"range": [0, 5], "default": 0.1},
-            "A": {"range": [-1, 1], "default": 1},
-            "B": {"range": [-1, 1], "default": 0.5},
-            "a": {"range": [0, 2], "default": 1},
-            "b": {"range": [0, 2], "default": 2},
-            "delta": {"range": [0, 1], "default": 0.5},
-            "phase": {"range": [0, 1], "default": 0.5},
+            "A": {"range": [0, 2], "default": 0.5},
+            "B": {"range": [0, 2], "default": 1.0},
+            "C": {"range": [0, 2], "default": 0.0},
+            "a": {"range": [0, 5], "default": 2.0},
+            "b": {"range": [0, 5], "default": 1.0},
+            "c": {"range": [0, 5], "default": 1.0},
+            "duration": {"range": [1, 30], "default": 10.0},
+            "ramp": {"range": [0, 10], "default": 3.0},
         })
     }
     evaluate(t){
-        const scale = this.parameter_values.scale
-        const duration = this.parameter_values.period
-        const A = this.parameter_values.A
-        const B = this.parameter_values.B
-        const a = this.parameter_values.a
-        const b = this.parameter_values.b
-        const delta = this.parameter_values.delta
-        const phase = this.parameter_values.phase
-        const progress = t * 2 * Math.PI / duration
-        const d_progress = 2 * Math.PI / duration
-        const x = scale * A * Math.sin(a * (phase*Math.PI + progress) + delta*Math.PI)
-        const y = scale * B * Math.sin(b * (phase*Math.PI + progress))
-        const vx = scale * A * Math.cos(a * (phase*Math.PI + progress) + delta*Math.PI) * a * d_progress
-        const vy = scale * B * Math.cos(b * (phase*Math.PI + progress)) * b * d_progress
-        return [x, y, 0, vx, vy, 0]
+        const { A, B, C, a, b, c, duration, ramp } = this.parameter_values
+        const time_velocity = ramp > 0 ? Math.min(t, ramp) / ramp : 1.0
+        const ramp_time = time_velocity * Math.min(t, ramp) / 2.0
+        const progress = (ramp_time + Math.max(0, t - ramp)) * 2 * Math.PI / duration
+        const d_progress = 2 * Math.PI * time_velocity / duration
+        return [
+            A * Math.sin(a * progress),
+            B * Math.sin(b * progress),
+            C * Math.sin(c * progress),
+            A * Math.cos(a * progress) * a * d_progress,
+            B * Math.cos(b * progress) * b * d_progress,
+            C * Math.cos(c * progress) * c * d_progress
+        ]
     }
 }

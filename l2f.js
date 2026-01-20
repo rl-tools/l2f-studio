@@ -102,10 +102,22 @@ export class L2F{
             this.render()
             this.real_time_factor = null
             this.control_timer = null
+            this.resetTrackingError()
             this.control()
         });
         this.dt = null
         this.references = null
+        this.tracking_error = { cumulative: [], steps: [] }
+    }
+    resetTrackingError() {
+        this.tracking_error = { 
+            cumulative: this.states.map(() => 0), 
+            steps: this.states.map(() => 0) 
+        }
+    }
+    getAverageTrackingError() {
+        return this.tracking_error.cumulative.map((cum, i) => 
+            this.tracking_error.steps[i] > 0 ? cum / this.tracking_error.steps[i] : 0)
     }
     async change_num_quadrotors(num, parameters){
         const diff = num - this.states.length
@@ -127,6 +139,7 @@ export class L2F{
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         this.remove_reference_markers()
         this.remove_trajectory_lines()
+        this.resetTrackingError()
         return diff
     }
     update_render_state(){
@@ -137,11 +150,13 @@ export class L2F{
         this.render_actions = this.states.map(state => Array.from(state.get_action()))
 
         
+        const avgErrors = this.getAverageTrackingError()
         const combined_state = this.render_states.map((state, i) => {
             return {
                 "state": state,
                 "action": this.render_actions[i],
-                "parameters": this.perturbed_parameters[i]
+                "parameters": this.perturbed_parameters[i],
+                "avgTrackingError": avgErrors[i] || 0
             }
         })
         this.state_update_callbacks.forEach(callback => callback(combined_state))
@@ -226,7 +241,15 @@ export class L2F{
             this.update_reference_markers(references)
             this.references.forEach((reference, i) => {
                 const reference_index = this.policy.get_reference_index(reference, 0)
-                this.references_ui[i].position.set(reference[reference_index][0], reference[reference_index][1], reference[reference_index][2])
+                const target = reference[reference_index]
+                this.references_ui[i].position.set(target[0], target[1], target[2])
+                // Track position error
+                const pos = this.render_states?.[i]?.position || [0, 0, 0]
+                const error = Math.sqrt((pos[0]-target[0])**2 + (pos[1]-target[1])**2 + (pos[2]-target[2])**2)
+                if (this.tracking_error.cumulative[i] !== undefined) {
+                    this.tracking_error.cumulative[i] += error
+                    this.tracking_error.steps[i] += 1
+                }
             })
         }
         console.assert(actions.length === this.states.length, "Action dimension mismatch")
