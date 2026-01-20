@@ -125,6 +125,8 @@ export class L2F{
         }
         this.update_render_state()
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
+        this.remove_reference_markers()
+        this.remove_trajectory_lines()
         return diff
     }
     update_render_state(){
@@ -153,6 +155,52 @@ export class L2F{
         this.references_ui = []
         this.references = null
     }
+    remove_trajectory_lines(){
+        if(this.trajectory_lines_ui){
+            this.trajectory_lines_ui.forEach(line => {
+                this.ui_state.simulator.remove(line)
+            })
+        }
+        this.trajectory_lines_ui = []
+        this.trajectory_lines_data = null
+    }
+    update_trajectory_lines(references){
+        // Check if references changed (different number of vehicles or different trajectory length)
+        const needsRecreate = !this.trajectory_lines_ui || 
+            this.trajectory_lines_ui.length !== references.length ||
+            (this.trajectory_lines_data && references[0] && this.trajectory_lines_data[0]?.length !== references[0].length)
+        
+        if(needsRecreate){
+            this.remove_trajectory_lines()
+            this.trajectory_lines_ui = references.map((reference, i) => {
+                // Create points from trajectory (each step has [x, y, z, vx, vy, vz])
+                const points = reference.map(step => new THREE.Vector3(step[0], step[1], step[2]))
+                const geometry = new THREE.BufferGeometry().setFromPoints(points)
+                const material = new THREE.LineBasicMaterial({ 
+                    color: 0xff6666,
+                    linewidth: 2,
+                    transparent: true,
+                    opacity: 0.7
+                })
+                const line = new THREE.Line(geometry, material)
+                this.ui_state.simulator.add(line)
+                return line
+            })
+            this.trajectory_lines_data = references.map(ref => ref.slice())
+        } else {
+            // Update existing line positions
+            references.forEach((reference, i) => {
+                const line = this.trajectory_lines_ui[i]
+                const positions = line.geometry.attributes.position.array
+                reference.forEach((step, j) => {
+                    positions[j * 3] = step[0]
+                    positions[j * 3 + 1] = step[1]
+                    positions[j * 3 + 2] = step[2]
+                })
+                line.geometry.attributes.position.needsUpdate = true
+            })
+        }
+    }
     update_reference_markers(references){
         if(this.references === null || this.references.length !== references.length){
             // create three.js reference ball
@@ -168,6 +216,8 @@ export class L2F{
             })
         }
         this.references = references
+        // Update trajectory lines
+        this.update_trajectory_lines(references)
     }
     simulate_step(){
         const actions = this.policy.evaluate_step(this.states)
@@ -269,6 +319,7 @@ export class L2F{
         })
         await this.ui.episode_init_multi(this.ui_state, this.parameters)
         this.remove_reference_markers()
+        this.remove_trajectory_lines()
     }
     async set_perturbed_parameters(ids, parameters){
         await this.initialized

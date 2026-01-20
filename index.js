@@ -528,6 +528,17 @@ async function main() {
         }
         console.log("setting parameters for vehicles: ", ids)
         console.log("parameters: ", parameters)
+        
+        // Reset trajectory steps to all zeros (we don't use the trajectory from the parameters, because we need to feed it dynamically and the user should be able to tweak it from the UI)
+        if (parameters.trajectory && parameters.trajectory.steps) {
+            parameters.trajectory.steps = parameters.trajectory.steps.map(() => ({
+                position: [0, 0, 0],
+                yaw: 0,
+                linear_velocity: [0, 0, 0],
+                yaw_velocity: 0
+            }))
+        }
+        
         await l2f.set_parameters(ids, ids.map(() => parameters))
     }
     document.getElementById("vehicle-load-dynamics-btn-backend").addEventListener("change", async (event) => {
