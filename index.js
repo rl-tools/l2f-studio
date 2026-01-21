@@ -126,14 +126,19 @@ class Policy{
         const velocity_clip = x => clip(x, -2, 2)
         const current_position = full_observation.slice(0, 3)
         const current_velocity = full_observation.slice(12, 15)
+        const force_trajectory_tracking = document.getElementById("force-trajectory-tracking-observations").checked
         switch (true) {
-            case obs === "Position" || obs === "TrajectoryTrackingPosition":{
+            case obs === "Position" && !force_trajectory_tracking :
+                return current_position
+            case obs === "TrajectoryTrackingPosition" || (obs === "Position" && force_trajectory_tracking) :{
                 const ref = this.get_reference_point(trajectory, 0)
                 return current_position.map((x, axis_i) => position_clip(x - ref[axis_i]))
             }
             case obs === "OrientationRotationMatrix":
                 return full_observation.slice(3, 12)
-            case obs === "LinearVelocity" || obs === "TrajectoryTrackingLinearVelocity":{
+            case obs === "LinearVelocity" && !force_trajectory_tracking :
+                return current_velocity
+            case obs === "TrajectoryTrackingLinearVelocity" || (obs === "LinearVelocity" && force_trajectory_tracking) :{
                 const ref = this.get_reference_point(trajectory, 0)
                 return current_velocity.map((x, axis_i) => velocity_clip(x - ref[3 + axis_i]))
             }
@@ -188,9 +193,8 @@ class Policy{
         if (!this.policy_states || this.policy_states.length !== states.length) {
             this.policy_states = states.map(() => null)
         }
-        this.step += 1
         const references = this.get_reference(states)
-        return states.map((state, i) => {
+        const actions = states.map((state, i) => {
             state.observe()
             const reference = references[i]
             const observation_description = document.getElementById("observations").observation
@@ -199,6 +203,8 @@ class Policy{
             this.policy_states[i] = new_state
             return output.valueOf()[0]
         })
+        this.step += 1
+        return actions
     }
     reset() {
         this.step = 0
@@ -218,7 +224,8 @@ class Policy{
         })
     }
     get_reference_index(reference, offset){
-        const real_step = this.step + offset
+        // Use step - 1 because this is called after evaluate_step has already incremented
+        const real_step = this.step - 1 + offset
         const cycle = Math.floor(real_step / reference.length)
         const phase = real_step % reference.length
         return cycle % 2 === 0 ? phase : reference.length - 1 - phase
