@@ -177,42 +177,20 @@ export class L2F{
             })
         }
         this.trajectory_lines_ui = []
-        this.trajectory_lines_data = null
     }
     update_trajectory_lines(references){
-        // Check if references changed (different number of vehicles or different trajectory length)
-        const needsRecreate = !this.trajectory_lines_ui || 
-            this.trajectory_lines_ui.length !== references.length ||
-            (this.trajectory_lines_data && references[0] && this.trajectory_lines_data[0]?.length !== references[0].length)
-        
-        if(needsRecreate){
+        // Recreate if no lines exist or vehicle count changed
+        if(!this.trajectory_lines_ui?.length || this.trajectory_lines_ui.length !== references.length){
             this.remove_trajectory_lines()
             this.trajectory_lines_ui = references.map((reference, i) => {
-                // Create points from trajectory (each step has [x, y, z, vx, vy, vz])
                 const points = reference.map(step => new THREE.Vector3(step[0], step[1], step[2]))
-                const geometry = new THREE.BufferGeometry().setFromPoints(points)
-                const material = new THREE.LineBasicMaterial({ 
-                    color: 0xff6666,
-                    linewidth: 2,
-                    transparent: true,
-                    opacity: 0.7
-                })
-                const line = new THREE.Line(geometry, material)
-                this.ui_state.simulator.add(line)
-                return line
-            })
-            this.trajectory_lines_data = references.map(ref => ref.slice())
-        } else {
-            // Update existing line positions
-            references.forEach((reference, i) => {
-                const line = this.trajectory_lines_ui[i]
-                const positions = line.geometry.attributes.position.array
-                reference.forEach((step, j) => {
-                    positions[j * 3] = step[0]
-                    positions[j * 3 + 1] = step[1]
-                    positions[j * 3 + 2] = step[2]
-                })
-                line.geometry.attributes.position.needsUpdate = true
+                const curve = new THREE.CatmullRomCurve3(points)
+                const radius = Math.cbrt(this.parameters[i].dynamics.mass) * 0.0075 // 50% thicker than /200
+                const geometry = new THREE.TubeGeometry(curve, points.length, radius, 8, false)
+                const material = new THREE.MeshBasicMaterial({ color: 0x7DB9B6, transparent: true, opacity: 0.7 })
+                const tube = new THREE.Mesh(geometry, material)
+                this.ui_state.simulator.add(tube)
+                return tube
             })
         }
     }
@@ -231,7 +209,6 @@ export class L2F{
             })
         }
         this.references = references
-        // Update trajectory lines
         this.update_trajectory_lines(references)
     }
     simulate_step(){

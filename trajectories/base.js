@@ -1,13 +1,12 @@
 export class Trajectory{
     constructor(parameters){
-        this.parameters = parameters
+        this.parameters = { "length": {"range": [1, 60], "default": 30, "step": 0.5}, ...parameters }
         this.parameter_values = {}
         for(const [name, param] of Object.entries(this.parameters)){
             this.parameter_values[name] = param.default
         }
-        this.length = 10 // seconds
         this.sample_rate = 100 // Hz = control frequency
-        this.num_steps = this.length * this.sample_rate
+        this.onUpdate = null
         this.parameters_updated()
     }
     set_parameter(name, value){
@@ -20,8 +19,11 @@ export class Trajectory{
         }
     }
     parameters_updated(){
-        this.trajectory = new Array(this.num_steps).fill(0).map((_, i) => {
+        const length = this.parameter_values.length
+        const num_steps = Math.round(length * this.sample_rate)
+        this.trajectory = new Array(num_steps).fill(0).map((_, i) => {
             return this.evaluate(i / this.sample_rate)
         })
+        this.onUpdate?.()
     }
 }

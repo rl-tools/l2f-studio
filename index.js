@@ -332,7 +332,7 @@ async function main() {
             const slider = template.querySelector("input[type=range]")
             slider.min = config.range[0]
             slider.max = config.range[1]
-            slider.step = 0.01
+            slider.step = config.step ?? 0.01
             slider.value = config.default
 
             slider.addEventListener("input", () => {
@@ -533,6 +533,11 @@ async function main() {
     console.log("Waiting for trajectory to be initialized")
 
     const l2f = new L2F(sim_container, Array(10).fill(default_parameters), proxy_controller, seed)
+    
+    // Wire trajectory updates to invalidate rendered trajectory lines
+    const wireTrajectoryCallback = () => { trajectory.onUpdate = () => l2f.remove_trajectory_lines() }
+    wireTrajectoryCallback()
+    trajectory_select.addEventListener("change", wireTrajectoryCallback)
 
     l2f.state_update_callbacks.push((states) => {
         const vehicle_container = document.getElementById("vehicle-list")
