@@ -1,6 +1,6 @@
 
 const urlParams = new URLSearchParams(window.location.search)
-if(window.location.hostname === "raptor.rl.tools" || urlParams.get("raptor") === "true"){
+if(["raptor.rl.tools", "ai.new"].includes(window.location.hostname) || urlParams.get("raptor") === "true"){
     
     function handleMobileLayout() {
         const raptorPage = document.getElementById("raptor-project-page");
