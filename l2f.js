@@ -212,7 +212,7 @@ export class L2F{
         this.update_trajectory_lines(references)
     }
     simulate_step(){
-        const actions = this.policy.evaluate_step(this.states)
+        const actions = this.policy.evaluate_step(this.states, this.ui_state, this.ui, this.parameters)
         const references = this.policy.get_reference(this.states)
         if(references !== null){
             this.update_reference_markers(references)

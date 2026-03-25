@@ -29,6 +29,10 @@ const PLATFORM_MESH_MAP = {
     "arpl": "775ba8559aeed800dbcdab93806601e39d84fede"
 }
 
+const SCENE_REGISTRY = {
+    "ProcTHOR-Train-1": "7f1c9129532798e0b63bc41edb6b4c09251cf8a0",
+}
+
 const addMeshToParameters = (params, platform) => 
     (!params.ui && PLATFORM_MESH_MAP[platform]) ? Object.assign(params, { ui: { enable: true, model: PLATFORM_MESH_MAP[platform] }}) : params
 
@@ -189,7 +193,16 @@ class Policy{
                 return null
         }
     }
-    evaluate_step(states) {
+    get_visual_observation(state, branch_string, ui_state, ui, parameters) {
+        if(!ui || !ui.render_onboard_pixels || !ui_state) return []
+        const render_state = {
+            position: Array.from(state.get_observation()).slice(0, 3),
+            orientation: JSON.parse(state.get_state()).orientation,
+        }
+        const pixels = ui.render_onboard_pixels(ui_state, render_state, parameters)
+        return pixels ? Array.from(pixels) : []
+    }
+    evaluate_step(states, ui_state, ui, parameters) {
         if (!this.policy_states || this.policy_states.length !== states.length) {
             this.policy_states = states.map(() => null)
         }
@@ -198,7 +211,12 @@ class Policy{
             state.observe()
             const reference = references[i]
             const observation_description = document.getElementById("observations").observation
-            let input = math.matrix([observation_description.split(".").map(x => this.get_observation(state, x, reference)).flat()])
+            const branches = observation_description.split(";")
+            const branch_observations = branches.map(branch => {
+                if(branch.startsWith("Visual(")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i])
+                return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
+            })
+            let input = math.matrix([branch_observations.flat()])
             const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
             this.policy_states[i] = new_state
             return output.valueOf()[0]
@@ -698,6 +716,27 @@ async function main() {
         }
     })
 
+    // Scene selector
+    const scene_select = document.getElementById("scene-selector")
+    Object.entries(SCENE_REGISTRY).forEach(([name, hash]) => {
+        const option = document.createElement("option")
+        option.value = hash
+        option.textContent = name
+        scene_select.appendChild(option)
+    })
+    document.getElementById("scene-load-btn").addEventListener("click", async () => {
+        const hash = scene_select.value
+        const obs_desc = document.getElementById("observations").observation || ""
+        const visual_branch = obs_desc.split(";").find(b => b.startsWith("Visual("))
+        let cam_w = 64, cam_h = 64, cos_fov = 0.66
+        if(visual_branch){
+            const params = visual_branch.match(/Visual\((.+)\)/)[1].split(",").map(Number)
+            cam_w = params[0]; cam_h = params[1]; cos_fov = params[3]
+        }
+        if(l2f.ui && l2f.ui.setup_onboard_scene){
+            await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, cos_fov)
+        }
+    })
 
 }
 
