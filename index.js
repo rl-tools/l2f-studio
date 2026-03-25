@@ -735,8 +735,33 @@ async function main() {
         }
         if(l2f.ui && l2f.ui.setup_onboard_scene){
             await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, cos_fov)
+            l2f.ui_state.show_onboard_preview = document.getElementById("scene-preview-checkbox").checked
         }
     })
+    document.getElementById("scene-preview-checkbox").addEventListener("change", (e) => {
+        if(l2f.ui_state) l2f.ui_state.show_onboard_preview = e.target.checked
+    })
+    document.getElementById("scene-obs-res-checkbox").addEventListener("change", (e) => {
+        if(l2f.ui_state){
+            l2f.ui_state.onboard_obs_resolution = e.target.checked
+            if(l2f.ui_state.onboard_overlay_quad){
+                l2f.ui_state.onboard_overlay_quad = null
+                l2f.ui_state.onboard_overlay_blit_scene = null
+                l2f.ui_state.onboard_overlay_blit_camera = null
+            }
+        }
+    })
+
+    // Auto-enable preview when observation string contains Visual
+    const obs_input = document.getElementById("observations")
+    const update_preview_from_obs = () => {
+        const obs = obs_input.observation || obs_input.value || ""
+        if(obs.split(";").some(b => b.startsWith("Visual("))){
+            document.getElementById("scene-preview-checkbox").checked = true
+            if(l2f.ui_state) l2f.ui_state.show_onboard_preview = true
+        }
+    }
+    obs_input.addEventListener("change", update_preview_from_obs)
 
 }
 
