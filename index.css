@@ -37,6 +37,21 @@ body {
     border-top: 1px solid #ddd;
     padding-top: 10px;
 }
+#scene-transform-inputs{
+    margin-top: 5px;
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    font-size: 12px;
+}
+#scene-transform-inputs span{
+    margin-left: 4px;
+}
+#scene-transform-inputs input[type="number"]{
+    width: 42px;
+    padding: 1px 2px;
+    font-size: 11px;
+}
 #vehicle-load-dynamics-btn-backend{
     display: none;
 }

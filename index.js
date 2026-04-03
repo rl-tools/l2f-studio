@@ -30,7 +30,11 @@ const PLATFORM_MESH_MAP = {
 }
 
 const SCENE_REGISTRY = {
-    "ProcTHOR-Train-1": "7f1c9129532798e0b63bc41edb6b4c09251cf8a0",
+    "ProcTHOR-Train-1": {
+        hash: "7f1c9129532798e0b63bc41edb6b4c09251cf8a0",
+        offset: [-3.92, 1.0, 5.67],
+        rotation: [0, 0, 0],
+    },
 }
 
 const addMeshToParameters = (params, platform) => 
@@ -718,11 +722,23 @@ async function main() {
 
     // Scene selector
     const scene_select = document.getElementById("scene-selector")
-    Object.entries(SCENE_REGISTRY).forEach(([name, hash]) => {
+    const scene_off = [document.getElementById("scene-offset-x"), document.getElementById("scene-offset-y"), document.getElementById("scene-offset-z")]
+    const scene_rot = [document.getElementById("scene-rot-r"), document.getElementById("scene-rot-p"), document.getElementById("scene-rot-y")]
+    const deg2rad = d => d * Math.PI / 180
+    const set_scene_defaults = (entry) => {
+        const off = entry ? entry.offset : [0, 0, 0]
+        const rot = entry ? entry.rotation : [0, 0, 0]
+        for(let i = 0; i < 3; i++){ scene_off[i].value = off[i]; scene_rot[i].value = rot[i] }
+    }
+    Object.entries(SCENE_REGISTRY).forEach(([name, entry]) => {
         const option = document.createElement("option")
-        option.value = hash
+        option.value = entry.hash
         option.textContent = name
         scene_select.appendChild(option)
+    })
+    scene_select.addEventListener("change", () => {
+        const entry = Object.values(SCENE_REGISTRY).find(e => e.hash === scene_select.value)
+        set_scene_defaults(entry)
     })
     document.getElementById("scene-load-btn").addEventListener("click", async () => {
         const hash = scene_select.value
@@ -735,9 +751,16 @@ async function main() {
         }
         if(l2f.ui && l2f.ui.setup_onboard_scene){
             await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, cos_fov)
+            apply_scene_transform()
             l2f.ui_state.show_onboard_preview = document.getElementById("scene-preview-checkbox").checked
         }
     })
+    const apply_scene_transform = () => {
+        if(!l2f.ui_state) return
+        l2f.ui_state.onboard_scene_translation = scene_off.map(el => parseFloat(el.value) || 0)
+        l2f.ui_state.onboard_scene_rotation = scene_rot.map(el => deg2rad(parseFloat(el.value) || 0))
+    }
+    ;[...scene_off, ...scene_rot].forEach(el => el.addEventListener("input", apply_scene_transform))
     document.getElementById("scene-preview-checkbox").addEventListener("change", (e) => {
         if(l2f.ui_state) l2f.ui_state.show_onboard_preview = e.target.checked
     })
