@@ -1,3 +1,4 @@
+import * as THREE from "three"
 import { L2F } from "./l2f.js"
 import { SimControls } from "./sim_controls.js";
 import { ParameterManager } from "./parameter_manager.js";
@@ -32,7 +33,7 @@ const PLATFORM_MESH_MAP = {
 const SCENE_REGISTRY = {
     "ProcTHOR-Train-1": {
         hash: "7f1c9129532798e0b63bc41edb6b4c09251cf8a0",
-        offset: [-3.92, 1.0, 5.67],
+        offset: [-3.92, -5.67, 1.0],
         rotation: [0, 0, 0],
     },
 }
@@ -757,8 +758,24 @@ async function main() {
     })
     const apply_scene_transform = () => {
         if(!l2f.ui_state) return
-        l2f.ui_state.onboard_scene_translation = scene_off.map(el => parseFloat(el.value) || 0)
-        l2f.ui_state.onboard_scene_rotation = scene_rot.map(el => deg2rad(parseFloat(el.value) || 0))
+        const off = scene_off.map(el => parseFloat(el.value) || 0)
+        l2f.ui_state.onboard_scene_translation = off
+        if(!l2f.ui_state.onboard_scene) return
+        const rpy = scene_rot.map(el => deg2rad(parseFloat(el.value) || 0))
+        // Build drone-frame rotation from RPY in FLU, using Three.js axes
+        // FLU X=(1,0,0)→Three(1,0,0), FLU Y=(0,1,0)→Three(0,0,-1), FLU Z=(0,0,1)→Three(0,1,0)
+        const q_drone = new THREE.Quaternion()
+        q_drone.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rpy[2]))
+        q_drone.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, -1), rpy[1]))
+        q_drone.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rpy[0]))
+        const q_inv = q_drone.invert()
+        // Pivot point in Three.js coords: FLU (x,y,z) → Three (x, z, -y)
+        const T = new THREE.Vector3(off[0], off[2], -off[1])
+        l2f.ui_state.onboard_scene.children.forEach(child => {
+            if(child.isLight) return
+            child.quaternion.copy(q_inv)
+            child.position.copy(T).sub(new THREE.Vector3().copy(T).applyQuaternion(q_inv))
+        })
     }
     ;[...scene_off, ...scene_rot].forEach(el => el.addEventListener("input", apply_scene_transform))
     document.getElementById("scene-preview-checkbox").addEventListener("change", (e) => {
