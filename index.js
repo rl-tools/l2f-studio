@@ -110,7 +110,7 @@ class MultiController {
     }
 }
 
-let model = null
+let model = null; Object.defineProperty(window, '_model', { get: () => model })
 let trajectory = null
 let trajectory_offset = 0
 let trajectory_offset_axis = 0
@@ -565,6 +565,7 @@ async function main() {
     console.log("Waiting for trajectory to be initialized")
 
     const l2f = new L2F(sim_container, Array(10).fill(default_parameters), proxy_controller, seed)
+    window._l2f = l2f
     
     // Wire trajectory updates to invalidate rendered trajectory lines
     const wireTrajectoryCallback = () => { trajectory.onUpdate = () => l2f.remove_trajectory_lines() }

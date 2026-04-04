@@ -253,24 +253,30 @@ export class L2F{
         const now = performance.now()
         if(!this.pause){
             this.ticks.push(now)
-            const real_time_factor_interval = Math.floor(100 * this.current_speed)
-            this.ticks = this.ticks.slice(-real_time_factor_interval)
-            if(this.control_tick % real_time_factor_interval === 0){
-                if(this.dt !== null && this.ticks.length === real_time_factor_interval){
-                    this.real_time_factor = this.dt / (mean(this.ticks.slice(1).map((tick, i) => tick - this.ticks[i])) / 1000)
+            const rtf_window = 100
+            this.ticks = this.ticks.slice(-rtf_window)
+            if(now - (this.last_rtf_update || 0) >= 2000 && this.dt !== null && this.ticks.length >= 2){
+                this.last_rtf_update = now;
+                const spt = Math.max(1, Math.floor(((1 / this.dt) * this.current_speed) / 60))
+                const mean_interval = (this.ticks[this.ticks.length - 1] - this.ticks[0]) / (this.ticks.length - 1) / 1000
+                this.real_time_factor = (this.dt * spt) / mean_interval
+            }
+            const sim_hz = (this.dt ? (1 / this.dt) : 100) * this.speed
+            const steps_per_tick = Math.max(1, Math.floor(sim_hz / 60))
+            for(let s = 0; s < steps_per_tick; s++){
+                const dt = this.simulate_step()
+                if(this.DEBUG && this.dt !== null && this.dt !== dt){
+                    console.error(`dt mismatch: ${this.dt} != ${dt}`)
                 }
+                this.dt = dt
             }
-            const dt = this.simulate_step()
-            if(this.DEBUG && this.dt !== null && this.dt !== dt){
-                console.error(`dt mismatch: ${this.dt} != ${dt}`)
-            }
-            this.dt = dt
             if(this.control_timer === null || this.speed !== this.current_speed){
                 this.current_speed = this.speed
                 if(this.control_timer !== null){
                     clearInterval(this.control_timer)
                 }
-                this.control_timer = setInterval(this.control.bind(this), this.dt / this.speed * 1000)
+                const spt = Math.max(1, Math.floor(((1 / this.dt) * this.speed) / 60))
+                this.control_timer = setInterval(this.control.bind(this), this.dt * spt / this.speed * 1000)
             }
             if(this.request_pause){
                 this.pause = true
