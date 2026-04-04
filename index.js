@@ -2,7 +2,7 @@ import * as THREE from "three"
 import { L2F } from "./l2f.js"
 import { SimControls } from "./sim_controls.js";
 import { ParameterManager } from "./parameter_manager.js";
-import * as rlt from "rltools"
+import * as rlt from "./dyn_inference_wrapper.js"
 import * as math from "mathjs"
 import { Gamepad } from "./gamepad.js"
 import { GamepadController } from "./gamepad_controller.js"
@@ -209,7 +209,7 @@ class Policy{
     }
     evaluate_step(states, ui_state, ui, parameters) {
         if (!this.policy_states || this.policy_states.length !== states.length) {
-            this.policy_states = states.map(() => null)
+            this.policy_states = states.map(() => model ? model.create_state() : null)
         }
         const references = this.get_reference(states)
         const actions = states.map((state, i) => {
@@ -221,16 +221,18 @@ class Policy{
                 if(branch.startsWith("Visual(")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i])
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
             })
-            let input = math.matrix([branch_observations.flat()])
-            const [output, new_state] = model.evaluate_step(input, this.policy_states[i])
-            this.policy_states[i] = new_state
-            return output.valueOf()[0]
+            const input = new Float32Array(branch_observations.flat())
+            const output = model.evaluate_step(input, this.policy_states[i])
+            return output
         })
         this.step += 1
         return actions
     }
     reset() {
         this.step = 0
+        if(this.policy_states && model){
+            this.policy_states.forEach(id => { if(id !== null) model.reset_state(id) })
+        }
         this.policy_states = null
     }
     _get_reference(){
@@ -298,6 +300,7 @@ async function load_model(checkpoint) {
         checkpoint = await (await fetch(checkpoint)).arrayBuffer()
     }
     localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
+    if(model) model.destroy()
     model = await rlt.load(checkpoint)
     const checkpoint_span = document.getElementById("checkpoint-name")
     checkpoint_span.textContent = model.checkpoint_name
