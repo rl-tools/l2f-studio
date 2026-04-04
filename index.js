@@ -3,7 +3,6 @@ import { L2F } from "./l2f.js"
 import { SimControls } from "./sim_controls.js";
 import { ParameterManager } from "./parameter_manager.js";
 import * as rlt from "./dyn_inference_wrapper.js"
-import * as math from "mathjs"
 import { Gamepad } from "./gamepad.js"
 import { GamepadController } from "./gamepad_controller.js"
 import { Position } from "./trajectories/position.js"
