@@ -73,8 +73,8 @@ class ProxyController {
     constructor(current_policy) {
         this.policy = current_policy
     }
-    evaluate_step(state) {
-        return this.policy.evaluate_step(state)
+    evaluate_step(...args) {
+        return this.policy.evaluate_step(...args)
     }
     reset() {
         this.policy.reset()
@@ -215,7 +215,10 @@ class Policy{
             state.observe()
             const reference = references[i]
             const observation_description = document.getElementById("observations").observation
-            const branches = observation_description.split(";")
+            const branches = observation_description.split(";").flatMap(b => {
+                const m = b.match(/^(CameraRGB\w*\([^)]+\)),\s*(.+)$/)
+                return m ? [m[1], m[2]] : [b]
+            })
             const branch_observations = branches.map(branch => {
                 if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i])
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
@@ -810,6 +813,16 @@ async function main() {
     }
     obs_input.addEventListener("change", update_preview_from_obs)
 
+    if(new URLSearchParams(window.location.search).get("DEBUG") === "true"){
+        document.getElementById("vehicle-load-dynamics-selector").value = "crazyflie"
+        document.getElementById("vehicle-load-dynamics-btn").click()
+        const entry = SCENE_REGISTRY["ProcTHOR-Train-1"]
+        scene_select.value = entry.hash
+        set_scene_defaults(entry)
+        l2f.initialized.then(() => {
+            document.getElementById("scene-load-btn").click()
+        })
+    }
 }
 
 if (document.readyState === 'loading') {
