@@ -118,6 +118,39 @@ class Policy{
     constructor() {
         this.step = 0
         this.policy_states = null
+        this.frame_buffers = null
+        this.frame_buffer_head = null
+        this.frame_buffer_episode_start = null
+        this.frame_stack_config = null
+        this.frame_buffer_capacity = 0
+        this._last_obs_desc = null
+    }
+    _parse_frame_stack_config(obs_desc) {
+        if(this._last_obs_desc === obs_desc) return
+        this._last_obs_desc = obs_desc
+        const branches = obs_desc.split(";").flatMap(b => {
+            const m = b.match(/^(CameraRGB\w*\([^)]+\)),\s*(.+)$/)
+            return m ? [m[1], m[2]] : [b]
+        })
+        const visual = branches.find(b => b.startsWith("CameraRGBStacked"))
+        if(visual){
+            const inner = visual.match(/\((.+)\)/)[1].split(",").map(s => Number(s.trim()))
+            this.frame_stack_config = { h: inner[1], w: inner[2], stride: inner[3], n_frames: inner[4] }
+            this.frame_buffer_capacity = (this.frame_stack_config.n_frames - 1) * this.frame_stack_config.stride + 1
+        } else {
+            this.frame_stack_config = null
+            this.frame_buffers = null
+            this.frame_buffer_head = null
+            this.frame_buffer_episode_start = null
+        }
+    }
+    _ensure_frame_buffers(n_drones) {
+        if(this.frame_buffers && this.frame_buffers.length === n_drones) return
+        const cfg = this.frame_stack_config
+        const buf_size = this.frame_buffer_capacity * cfg.w * cfg.h * 3
+        this.frame_buffers = Array.from({length: n_drones}, () => new Float32Array(buf_size))
+        this.frame_buffer_head = new Array(n_drones).fill(0)
+        this.frame_buffer_episode_start = new Array(n_drones).fill(0)
     }
     get_observation(state, obs, trajectory) {
         let vehicle_state = null
@@ -197,30 +230,60 @@ class Policy{
                 return null
         }
     }
-    get_visual_observation(state, branch_string, ui_state, ui, parameters) {
+    get_visual_observation(state, branch_string, ui_state, ui, parameters, drone_index) {
         if(!ui || !ui.render_onboard_pixels || !ui_state) return []
         const render_state = {
             position: Array.from(state.get_observation()).slice(0, 3),
             orientation: JSON.parse(state.get_state()).orientation,
         }
-        const pixels = ui.render_onboard_pixels(ui_state, render_state, parameters)
-        return pixels ? Array.from(pixels) : []
+        const raw = ui.render_onboard_pixels(ui_state, render_state, parameters)
+        if(!raw) return []
+        const srgb = x => x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1.0 / 2.4) - 0.055
+        const cfg = this.frame_stack_config
+        if(!cfg || !this.frame_buffers || drone_index === undefined){
+            for(let i = 0; i < raw.length; i++) raw[i] = srgb(raw[i])
+            return Array.from(raw)
+        }
+        const img_c = 3
+        const pixel_count = cfg.w * cfg.h * img_c
+        const capacity = this.frame_buffer_capacity
+        const buf = this.frame_buffers[drone_index]
+        const head = this.frame_buffer_head[drone_index]
+        buf.set(raw, (head % capacity) * pixel_count)
+        this.frame_buffer_head[drone_index] = head + 1
+        const n_pixels = cfg.w * cfg.h
+        const stacked_c = img_c * cfg.n_frames
+        const output = new Float32Array(n_pixels * stacked_c)
+        const ep_start = this.frame_buffer_episode_start[drone_index]
+        for(let f = 0; f < cfg.n_frames; f++){
+            let desired = head - f * cfg.stride
+            if(desired < ep_start) desired = ep_start
+            const read_offset = (desired % capacity) * pixel_count
+            for(let p = 0; p < n_pixels; p++){
+                for(let c = 0; c < img_c; c++){
+                    output[p * stacked_c + f * img_c + c] = srgb(buf[read_offset + p * img_c + c])
+                }
+            }
+        }
+        return Array.from(output)
     }
     evaluate_step(states, ui_state, ui, parameters) {
         if (!this.policy_states || this.policy_states.length !== states.length) {
             this.policy_states = states.map(() => model ? model.create_state() : null)
         }
+        const observation_description = document.getElementById("observations").observation
+        this._parse_frame_stack_config(observation_description)
+        if(this.frame_stack_config) this._ensure_frame_buffers(states.length)
         const references = this.get_reference(states)
         const actions = states.map((state, i) => {
             state.observe()
             const reference = references[i]
-            const observation_description = document.getElementById("observations").observation
             const branches = observation_description.split(";").flatMap(b => {
                 const m = b.match(/^(CameraRGB\w*\([^)]+\)),\s*(.+)$/)
                 return m ? [m[1], m[2]] : [b]
             })
             const branch_observations = branches.map(branch => {
-                if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i])
+                if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i], i)
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
             })
             const input = new Float32Array(branch_observations.flat())
@@ -236,6 +299,12 @@ class Policy{
             this.policy_states.forEach(id => { if(id !== null) model.reset_state(id) })
         }
         this.policy_states = null
+        this._last_obs_desc = null
+        if(this.frame_buffer_head && this.frame_buffer_episode_start){
+            for(let i = 0; i < this.frame_buffer_head.length; i++){
+                this.frame_buffer_episode_start[i] = this.frame_buffer_head[i]
+            }
+        }
     }
     _get_reference(){
         return trajectory.trajectory
