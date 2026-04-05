@@ -44,6 +44,9 @@ export async function load(input) {
         evaluate(input_array) {
             return Array.from(inference.evaluate(input_array))
         },
+        verify() {
+            return inference.verify()
+        },
         destroy() { inference.destroy() },
         description() {
             return `${inference.get_checkpoint_name()} (${inference.get_input_dim()} → ${inference.get_output_dim()})`

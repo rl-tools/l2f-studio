@@ -373,6 +373,11 @@ async function load_model(checkpoint) {
     localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
     if(model) model.destroy()
     model = await rlt.load(checkpoint)
+    if(model.verify){
+        const check = model.verify()
+        if(!check.pass) console.error("Model verification FAILED: max_diff=" + check.max_diff + " expected=" + Array.from(check.expected) + " actual=" + Array.from(check.actual))
+        else console.log("Model verification passed: max_diff=" + check.max_diff)
+    }
     const checkpoint_span = document.getElementById("checkpoint-name")
     checkpoint_span.textContent = model.checkpoint_name
     checkpoint_span.title = model.description()

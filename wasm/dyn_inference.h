@@ -27,6 +27,9 @@ struct DynInference {
     std::string meta_json;
     bool loaded = false;
     std::vector<float> output_cache;
+    std::vector<float> example_input_data;
+    std::vector<float> example_output_data;
+    TI tick_tock_capacity = 0;
 
     bool load(const std::string& path) {
         if(loaded) destroy();
@@ -43,18 +46,33 @@ struct DynInference {
 
         if(!rlt::load(device, model, actor_group)) return false;
 
-        // Determine input_dim from example data
+        // Load example input/output data
         hid_t example_group_id = H5Gopen2(file.id, "example", H5P_DEFAULT);
         if(example_group_id >= 0){
-            hid_t ds = H5Dopen2(example_group_id, "input", H5P_DEFAULT);
-            if(ds >= 0){
-                hid_t space = H5Dget_space(ds);
+            hid_t ds_in = H5Dopen2(example_group_id, "input", H5P_DEFAULT);
+            if(ds_in >= 0){
+                hid_t space = H5Dget_space(ds_in);
                 int rank = H5Sget_simple_extent_ndims(space);
                 hsize_t dims[5];
                 H5Sget_simple_extent_dims(space, dims, nullptr);
                 input_dim = (rank >= 2) ? dims[1] : dims[0];
+                TI total_in = 1; for(int d = 0; d < rank; d++) total_in *= dims[d];
+                example_input_data.resize(total_in);
+                H5Dread(ds_in, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, example_input_data.data());
                 H5Sclose(space);
-                H5Dclose(ds);
+                H5Dclose(ds_in);
+            }
+            hid_t ds_out = H5Dopen2(example_group_id, "output", H5P_DEFAULT);
+            if(ds_out >= 0){
+                hid_t space_out = H5Dget_space(ds_out);
+                int rank_out = H5Sget_simple_extent_ndims(space_out);
+                hsize_t dims_out[5];
+                H5Sget_simple_extent_dims(space_out, dims_out, nullptr);
+                TI total_out = 1; for(int d = 0; d < rank_out; d++) total_out *= dims_out[d];
+                example_output_data.resize(total_out);
+                H5Dread(ds_out, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, example_output_data.data());
+                H5Sclose(space_out);
+                H5Dclose(ds_out);
             }
             H5Gclose(example_group_id);
         }
@@ -65,6 +83,7 @@ struct DynInference {
 
         buffer.layer = &model;
         rlt::malloc(device, buffer);
+        tick_tock_capacity = buffer.tick.size;
 
         output_cache.resize(model.output_size);
         loaded = true;
@@ -91,11 +110,12 @@ struct DynInference {
     }
 
     emscripten::val evaluate_step(int state_id, emscripten::val js_input) {
+        buffer.tick.size = tick_tock_capacity;
+        buffer.tock.size = tick_tock_capacity;
         unsigned int len = js_input["length"].as<unsigned int>();
         std::vector<float> input_data(len);
-        for(unsigned int i = 0; i < len; i++){
-            input_data[i] = js_input[i].as<float>();
-        }
+        emscripten::val heap_view = emscripten::val(emscripten::typed_memory_view(len, input_data.data()));
+        heap_view.call<void>("set", js_input);
 
         rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> input_tensor;
         TI input_shape[] = {(TI)1, (TI)len};
@@ -120,6 +140,40 @@ struct DynInference {
 
     emscripten::val evaluate(emscripten::val js_input) {
         return evaluate_step(-1, js_input);
+    }
+
+    emscripten::val verify() {
+        if(example_input_data.empty() || example_output_data.empty()){
+            emscripten::val ret = emscripten::val::object();
+            ret.set("pass", false); ret.set("error", std::string("no example data")); return ret;
+        }
+        buffer.tick.size = tick_tock_capacity;
+        buffer.tock.size = tick_tock_capacity;
+        rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> input_tensor;
+        TI in_shape[] = {(TI)1, input_dim};
+        rlt::dyn::set_shape(input_tensor, (TI)2, in_shape);
+        input_tensor.type = rlt::dyn::Type::FLOAT32;
+        input_tensor.data = example_input_data.data();
+
+        rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> output_tensor;
+        TI out_shape[] = {(TI)output_dim};
+        rlt::dyn::set_shape(output_tensor, (TI)1, out_shape);
+        output_tensor.type = rlt::dyn::Type::FLOAT32;
+        output_tensor.data = output_cache.data();
+
+        rlt::evaluate(device, model, input_tensor, output_tensor, buffer);
+
+        float max_diff = 0;
+        for(size_t i = 0; i < example_output_data.size() && i < output_dim; i++){
+            float diff = std::abs(output_cache[i] - example_output_data[i]);
+            if(diff > max_diff) max_diff = diff;
+        }
+        emscripten::val ret = emscripten::val::object();
+        ret.set("max_diff", max_diff);
+        ret.set("pass", max_diff < 1e-4f);
+        ret.set("expected", emscripten::val(emscripten::typed_memory_view(example_output_data.size(), example_output_data.data())));
+        ret.set("actual", emscripten::val(emscripten::typed_memory_view(output_dim, output_cache.data())));
+        return ret;
     }
 
     void destroy() {
@@ -149,5 +203,6 @@ EMSCRIPTEN_BINDINGS(dyn_inference_module) {
         .function("reset_state", &DynInference::reset_state)
         .function("evaluate_step", &DynInference::evaluate_step)
         .function("evaluate", &DynInference::evaluate)
+        .function("verify", &DynInference::verify)
         .function("destroy", &DynInference::destroy);
 }
