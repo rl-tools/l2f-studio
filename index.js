@@ -217,7 +217,7 @@ class Policy{
             const observation_description = document.getElementById("observations").observation
             const branches = observation_description.split(";")
             const branch_observations = branches.map(branch => {
-                if(branch.startsWith("Visual(")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i])
+                if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i])
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
             })
             const input = new Float32Array(branch_observations.flat())
@@ -747,14 +747,18 @@ async function main() {
     document.getElementById("scene-load-btn").addEventListener("click", async () => {
         const hash = scene_select.value
         const obs_desc = document.getElementById("observations").observation || ""
-        const visual_branch = obs_desc.split(";").find(b => b.startsWith("Visual("))
-        let cam_w = 64, cam_h = 64, cos_fov = 0.66
+        const visual_branch = obs_desc.split(";").find(b => b.startsWith("Visual(") || b.startsWith("CameraRGB"))
+        let cam_w = 64, cam_h = 64, fov = 1.1132
         if(visual_branch){
-            const params = visual_branch.match(/Visual\((.+)\)/)[1].split(",").map(Number)
-            cam_w = params[0]; cam_h = params[1]; cos_fov = params[3]
+            const inner = visual_branch.match(/\((.+)\)/)[1].split(",").map(Number)
+            if(visual_branch.startsWith("CameraRGB")){
+                fov = inner[0]; cam_h = inner[1]; cam_w = inner[2]
+            } else {
+                cam_w = inner[0]; cam_h = inner[1]; if(inner[3] !== undefined) fov = inner[3]
+            }
         }
         if(l2f.ui && l2f.ui.setup_onboard_scene){
-            await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, cos_fov)
+            await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, fov)
             apply_scene_transform()
             l2f.ui_state.show_onboard_preview = document.getElementById("scene-preview-checkbox").checked
         }
@@ -799,7 +803,7 @@ async function main() {
     const obs_input = document.getElementById("observations")
     const update_preview_from_obs = () => {
         const obs = obs_input.observation || obs_input.value || ""
-        if(obs.split(";").some(b => b.startsWith("Visual("))){
+        if(obs.split(";").some(b => b.startsWith("Visual(") || b.startsWith("CameraRGB"))){
             document.getElementById("scene-preview-checkbox").checked = true
             if(l2f.ui_state) l2f.ui_state.show_onboard_preview = true
         }
