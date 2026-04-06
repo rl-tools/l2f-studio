@@ -290,6 +290,7 @@ class Policy{
                 if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i], i)
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
             })
+            if(branch_observations.some(b => b === null || b.length === 0)) return new Float32Array(state.action_dim)
             const input = new Float32Array(branch_observations.flat())
             const output = model.evaluate_step(input, this.policy_states[i])
             return output
