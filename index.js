@@ -124,6 +124,7 @@ class Policy{
         this.frame_stack_config = null
         this.frame_buffer_capacity = 0
         this._last_obs_desc = null
+        this.last_stacked_frames = null
     }
     _parse_frame_stack_config(obs_desc) {
         if(this._last_obs_desc === obs_desc) return
@@ -155,7 +156,7 @@ class Policy{
     get_observation(state, obs, trajectory) {
         let vehicle_state = null
         const full_observation = Array.from(state.get_observation())
-        console.assert(full_observation.length > 18, "Observation is smaller than base observation")
+        console.assert(full_observation.length > 21, "Observation is smaller than base observation")
         const get_state = () => {
             if (vehicle_state === null) {
                 vehicle_state = JSON.parse(state.get_state())
@@ -216,10 +217,12 @@ class Policy{
                     return s["angular_velocity_history"][s["angular_velocity_history"].length - delay]
                 }
             }
+            case obs === "LinearAccelerationBodyFrame" || obs === "IMUAccelerometer":
+                return full_observation.slice(18, 21)
             case obs.startsWith("ActionHistory"):
                 const history_length_string = obs.split("(")[1].split(")")[0]
                 const history_length = parseInt(history_length_string)
-                return full_observation.slice(18, 18 + history_length * 4)
+                return full_observation.slice(21, 21 + history_length * 4)
             case obs === "RotorSpeeds":
                 const parameters = JSON.parse(state.get_parameters())
                 const min_action = parameters.dynamics.action_limit.min
@@ -265,6 +268,7 @@ class Policy{
                 }
             }
         }
+        if(drone_index === 0) this.last_stacked_frames = { data: output, cfg }
         return Array.from(output)
     }
     evaluate_step(states, ui_state, ui, parameters) {
@@ -886,6 +890,56 @@ async function main() {
         }
     }
     obs_input.addEventListener("change", update_preview_from_obs)
+
+    // Frame stack preview
+    const frame_stack_container = document.getElementById("frame-stack-preview")
+    const frame_stack_canvases = []
+    let frame_stack_label = null
+    function render_frame_stack_preview() {
+        const policy = proxy_controller.policy
+        if(!policy.last_stacked_frames || !policy.frame_stack_config){
+            frame_stack_container.classList.remove("active")
+            return
+        }
+        const { data, cfg } = policy.last_stacked_frames
+        const { w, h, n_frames, stride } = cfg
+        const stacked_c = 3 * n_frames
+        // Ensure correct number of canvases
+        if(frame_stack_canvases.length !== n_frames){
+            frame_stack_container.innerHTML = ""
+            frame_stack_label = document.createElement("div")
+            frame_stack_label.className = "frame-stack-label"
+            frame_stack_container.appendChild(frame_stack_label)
+            frame_stack_canvases.length = 0
+            for(let f = 0; f < n_frames; f++){
+                const canvas = document.createElement("canvas")
+                canvas.width = w
+                canvas.height = h
+                canvas.style.width = Math.max(w, 48) + "px"
+                canvas.style.height = Math.max(h, 48) + "px"
+                frame_stack_container.appendChild(canvas)
+                frame_stack_canvases.push(canvas)
+            }
+        }
+        frame_stack_label.textContent = `Policy input: ${n_frames} frames (${w}x${h}, stride ${stride})`
+        frame_stack_container.classList.add("active")
+        for(let f = 0; f < n_frames; f++){
+            const ctx = frame_stack_canvases[f].getContext("2d")
+            const img_data = ctx.createImageData(w, h)
+            const pixels = img_data.data
+            for(let p = 0; p < w * h; p++){
+                const r = data[p * stacked_c + f * 3 + 0]
+                const g = data[p * stacked_c + f * 3 + 1]
+                const b = data[p * stacked_c + f * 3 + 2]
+                pixels[p * 4 + 0] = Math.round(r * 255)
+                pixels[p * 4 + 1] = Math.round(g * 255)
+                pixels[p * 4 + 2] = Math.round(b * 255)
+                pixels[p * 4 + 3] = 255
+            }
+            ctx.putImageData(img_data, 0, 0)
+        }
+    }
+    l2f.state_update_callbacks.push(() => render_frame_stack_preview())
 
     if(new URLSearchParams(window.location.search).get("DEBUG") === "true"){
         document.getElementById("vehicle-load-dynamics-selector").value = "crazyflie"

@@ -139,14 +139,15 @@ namespace builder{
         static constexpr TI LINEAR_VELOCITY_HISTORY = 10;
         static constexpr TI ANGULAR_VELOCITY_DELAY = 0;
         static constexpr TI LINEAR_VELOCITY_DELAY = 0;
-        using STATE_BASE = StateLinearVelocityDelay<StateLinearVelocityDelaySpecification<T, TI, LINEAR_VELOCITY_HISTORY, StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_HISTORY, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>>>;
+        using STATE_BASE = StateLinearVelocityDelay<StateLinearVelocityDelaySpecification<T, TI, LINEAR_VELOCITY_HISTORY, StateAngularVelocityDelay<StateAngularVelocityDelaySpecification<T, TI, ANGULAR_VELOCITY_HISTORY, StateLinearAcceleration<StateSpecification<T, TI, StateLastAction<StateSpecification<T, TI, StateBase<StateSpecification<T, TI>>>>>>>>>>;
         using STATE_TYPE = StateTrajectory<StateSpecification<T, TI, StateRandomForce<StateSpecification<T, TI, StateRotorsHistory<StateRotorsHistorySpecification<T, TI, ACTION_HISTORY_LENGTH, CLOSED_FORM, StateRandomForce<StateSpecification<T, TI, STATE_BASE>>>>>>>>;
         using OBSERVATION_TYPE = observation::Position<observation::PositionSpecification<T, TI,
                 observation::OrientationRotationMatrix<observation::OrientationRotationMatrixSpecification<T, TI,
                 observation::LinearVelocityDelayed<observation::LinearVelocityDelayedSpecification<T, TI, LINEAR_VELOCITY_DELAY,
                 observation::AngularVelocityDelayed<observation::AngularVelocityDelayedSpecification<T, TI, ANGULAR_VELOCITY_DELAY,
+                observation::LinearAccelerationBodyFrame<observation::LinearAccelerationBodyFrameSpecification<T, TI,
                 observation::ActionHistory<observation::ActionHistorySpecification<T, TI, ACTION_HISTORY_LENGTH>>
-        >>>>>>>>;
+        >>>>>>>>>>;
         using OBSERVATION_TYPE_PRIVILEGED = OBSERVATION_TYPE;
         static constexpr bool PRIVILEGED_OBSERVATION_NOISE = false;
         using PARAMETERS = PARAMETERS_TYPE;

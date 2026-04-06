@@ -55,6 +55,27 @@ body {
 #vehicle-load-dynamics-btn-backend{
     display: none;
 }
+#frame-stack-preview{
+    margin: 10px;
+    display: none;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-top: 1px solid #ddd;
+    padding-top: 8px;
+}
+#frame-stack-preview.active{
+    display: flex;
+}
+#frame-stack-preview .frame-stack-label{
+    width: 100%;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 2px;
+}
+#frame-stack-preview canvas{
+    image-rendering: pixelated;
+    border: 1px solid #ccc;
+}
 #vehicle-load-dynamics-selector optgroup {
     font-weight: bold;
     font-style: normal;
