@@ -29,7 +29,6 @@ struct DynInference {
     std::vector<float> output_cache;
     std::vector<float> example_input_data;
     std::vector<float> example_output_data;
-    TI tick_tock_capacity = 0;
 
     bool load(const std::string& path) {
         if(loaded) destroy();
@@ -55,7 +54,7 @@ struct DynInference {
                 int rank = H5Sget_simple_extent_ndims(space);
                 hsize_t dims[5];
                 H5Sget_simple_extent_dims(space, dims, nullptr);
-                input_dim = (rank >= 2) ? dims[1] : dims[0];
+                input_dim = dims[rank - 1];
                 TI total_in = 1; for(int d = 0; d < rank; d++) total_in *= dims[d];
                 example_input_data.resize(total_in);
                 H5Dread(ds_in, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, example_input_data.data());
@@ -78,12 +77,11 @@ struct DynInference {
         }
 
         TI input_shape[] = {1, input_dim};
-        rlt::dyn::propagate_shapes(model, input_shape, (TI)2, input_dim);
+        rlt::dyn::propagate_shapes(model, input_shape, (TI)2);
         output_dim = model.output_shape[model.output_rank - 1];
 
         buffer.layer = &model;
         rlt::malloc(device, buffer);
-        tick_tock_capacity = buffer.tick.size;
 
         output_cache.resize(model.output_size);
         loaded = true;
@@ -110,8 +108,6 @@ struct DynInference {
     }
 
     emscripten::val evaluate_step(int state_id, emscripten::val js_input) {
-        buffer.tick.size = tick_tock_capacity;
-        buffer.tock.size = tick_tock_capacity;
         unsigned int len = js_input["length"].as<unsigned int>();
         std::vector<float> input_data(len);
         emscripten::val heap_view = emscripten::val(emscripten::typed_memory_view(len, input_data.data()));
@@ -128,6 +124,7 @@ struct DynInference {
         rlt::dyn::set_shape(output_tensor, (TI)1, output_shape);
         output_tensor.type = rlt::dyn::Type::FLOAT32;
         output_tensor.data = output_cache.data();
+        output_tensor.capacity = output_cache.size();
 
         if(state_id >= 0 && state_id < (int)states.size()){
             rlt::evaluate_step(device, model, input_tensor, states[state_id], output_tensor, buffer);
@@ -147,8 +144,6 @@ struct DynInference {
             emscripten::val ret = emscripten::val::object();
             ret.set("pass", false); ret.set("error", std::string("no example data")); return ret;
         }
-        buffer.tick.size = tick_tock_capacity;
-        buffer.tock.size = tick_tock_capacity;
         rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> input_tensor;
         TI in_shape[] = {(TI)1, input_dim};
         rlt::dyn::set_shape(input_tensor, (TI)2, in_shape);
@@ -160,6 +155,7 @@ struct DynInference {
         rlt::dyn::set_shape(output_tensor, (TI)1, out_shape);
         output_tensor.type = rlt::dyn::Type::FLOAT32;
         output_tensor.data = output_cache.data();
+        output_tensor.capacity = output_cache.size();
 
         rlt::evaluate(device, model, input_tensor, output_tensor, buffer);
 
