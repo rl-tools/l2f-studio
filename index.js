@@ -35,6 +35,11 @@ const SCENE_REGISTRY = {
         offset: [-3.92, -5.67, 1.0],
         rotation: [0, 0, 0],
     },
+    "ProcTHOR-Train-26": {
+        hash: "44b5c137aaf4d6b4ed6a0d8ce57fa315c2331e67",
+        offset: [-5.2, -3.97, 1.64],
+        rotation: [0, 0, 0],
+    },
 }
 
 const addMeshToParameters = (params, platform) => 
