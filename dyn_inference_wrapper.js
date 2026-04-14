@@ -31,11 +31,16 @@ export async function load(input) {
     let meta = null
     try { meta = JSON.parse(inference.get_meta()) } catch (e) { meta = {} }
 
+    const num_branches = inference.get_num_branches()
+    const input_dims = inference.get_input_dims()
+
     return {
         checkpoint_name: inference.get_checkpoint_name(),
         meta,
         input_dim: inference.get_input_dim(),
         output_dim: inference.get_output_dim(),
+        num_branches,
+        input_dims,
         create_state() { return inference.create_state() },
         reset_state(id) { inference.reset_state(id) },
         evaluate_step(input_array, state_id) {
@@ -43,6 +48,9 @@ export async function load(input) {
         },
         evaluate(input_array) {
             return Array.from(inference.evaluate(input_array))
+        },
+        evaluate_tuple(branch_arrays) {
+            return Array.from(inference.evaluate_tuple(branch_arrays))
         },
         verify() {
             return inference.verify()

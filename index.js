@@ -291,8 +291,13 @@ class Policy{
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
             })
             if(branch_observations.some(b => b === null || b.length === 0)) return new Float32Array(state.action_dim)
-            const input = new Float32Array(branch_observations.flat())
-            const output = model.evaluate_step(input, this.policy_states[i])
+            let output
+            if(model.num_branches > 1 && model.evaluate_tuple){
+                output = model.evaluate_tuple(branch_observations.map(b => new Float32Array(b)))
+            } else {
+                const input = new Float32Array(branch_observations.flat())
+                output = model.evaluate_step(input, this.policy_states[i])
+            }
             return output
         })
         this.step += 1
@@ -380,8 +385,8 @@ async function load_model(checkpoint) {
     model = await rlt.load(checkpoint)
     if(model.verify){
         const check = model.verify()
-        if(!check.pass) console.error("Model verification FAILED: max_diff=" + check.max_diff + " expected=" + Array.from(check.expected) + " actual=" + Array.from(check.actual))
-        else console.log("Model verification passed: max_diff=" + check.max_diff)
+        if(!check.pass) console.error("Model verification FAILED for " + model.checkpoint_name + ": max_diff=" + check.max_diff + " expected=" + Array.from(check.expected) + " actual=" + Array.from(check.actual))
+        else console.log("Model verification passed for " + model.checkpoint_name + ": max_diff=" + check.max_diff)
     }
     const checkpoint_span = document.getElementById("checkpoint-name")
     checkpoint_span.textContent = model.checkpoint_name

@@ -93,6 +93,25 @@ struct DynInference {
     int get_input_dim() const { return (int)input_dim; }
     int get_output_dim() const { return (int)output_dim; }
 
+    int get_num_branches() const {
+        if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
+            auto& p = model.template as<const rlt::dyn::layers::Parallel<TI>>();
+            if(p.num_input_dims > 0) return (int)p.num_input_dims;
+        }
+        return 1;
+    }
+
+    emscripten::val get_input_dims() const {
+        emscripten::val arr = emscripten::val::array();
+        if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
+            auto& p = model.template as<const rlt::dyn::layers::Parallel<TI>>();
+            for(TI i = 0; i < p.num_input_dims; i++) arr.set((unsigned)i, (int)p.input_dims[i]);
+            if(p.num_input_dims > 0) return arr;
+        }
+        arr.set(0u, (int)input_dim);
+        return arr;
+    }
+
     int create_state() {
         rlt::dyn::State<TI> state;
         state.batch_size = 1;
@@ -137,6 +156,59 @@ struct DynInference {
 
     emscripten::val evaluate(emscripten::val js_input) {
         return evaluate_step(-1, js_input);
+    }
+
+    void infer_branch_shape(const rlt::dyn::Layer<TI>& branch, TI dim, TI* shape, TI& rank) {
+        const rlt::dyn::Layer<TI>* first = &branch;
+        while(first->num_children > 0 && (first->type == rlt::dyn::LayerType::SEQUENTIAL || first->type == rlt::dyn::LayerType::MLP))
+            first = &first->children[0];
+        if(first->type == rlt::dyn::LayerType::CONV2D){
+            auto& conv = first->template as<const rlt::dyn::layers::Conv2d<TI>>();
+            TI ic = conv.input_channels;
+            TI spatial = (ic > 0) ? dim / ic : 0;
+            TI side = 1; while(side * side < spatial) side++;
+            if(spatial > 0 && side * side == spatial){
+                shape[0] = 1; shape[1] = side; shape[2] = side; shape[3] = ic; rank = 4; return;
+            }
+        }
+        shape[0] = 1; shape[1] = dim; rank = 2;
+    }
+
+    emscripten::val evaluate_tuple(emscripten::val js_inputs) {
+        unsigned int n = js_inputs["length"].as<unsigned int>();
+        if(n > rlt::dyn::TensorTuple<TI>::MAX_TENSORS) n = rlt::dyn::TensorTuple<TI>::MAX_TENSORS;
+
+        std::vector<std::vector<float>> storage(n);
+        rlt::dyn::TensorTuple<TI> tuple;
+        tuple.num_tensors = n;
+        for(unsigned int i = 0; i < n; i++){
+            emscripten::val js_in = js_inputs[i];
+            unsigned int len = js_in["length"].as<unsigned int>();
+            storage[i].resize(len);
+            emscripten::val heap_view = emscripten::val(emscripten::typed_memory_view(len, storage[i].data()));
+            heap_view.call<void>("set", js_in);
+
+            TI shape[5]; TI rank;
+            if(model.type == rlt::dyn::LayerType::PARALLEL && i < model.num_children){
+                infer_branch_shape(model.children[i], (TI)len, shape, rank);
+            } else {
+                shape[0] = 1; shape[1] = len; rank = 2;
+            }
+            rlt::dyn::set_shape(tuple.tensors[i], rank, shape);
+            tuple.tensors[i].type = rlt::dyn::Type::FLOAT32;
+            tuple.tensors[i].data = storage[i].data();
+            tuple.tensors[i].capacity = len;
+        }
+
+        rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> output_tensor;
+        TI output_shape[] = {(TI)model.output_size};
+        rlt::dyn::set_shape(output_tensor, (TI)1, output_shape);
+        output_tensor.type = rlt::dyn::Type::FLOAT32;
+        output_tensor.data = output_cache.data();
+        output_tensor.capacity = output_cache.size();
+
+        rlt::evaluate(device, model, tuple, output_tensor, buffer);
+        return emscripten::val(emscripten::typed_memory_view(output_dim, output_cache.data()));
     }
 
     emscripten::val verify() {
@@ -195,10 +267,13 @@ EMSCRIPTEN_BINDINGS(dyn_inference_module) {
         .function("get_meta", &DynInference::get_meta)
         .function("get_input_dim", &DynInference::get_input_dim)
         .function("get_output_dim", &DynInference::get_output_dim)
+        .function("get_num_branches", &DynInference::get_num_branches)
+        .function("get_input_dims", &DynInference::get_input_dims)
         .function("create_state", &DynInference::create_state)
         .function("reset_state", &DynInference::reset_state)
         .function("evaluate_step", &DynInference::evaluate_step)
         .function("evaluate", &DynInference::evaluate)
+        .function("evaluate_tuple", &DynInference::evaluate_tuple)
         .function("verify", &DynInference::verify)
         .function("destroy", &DynInference::destroy);
 }
