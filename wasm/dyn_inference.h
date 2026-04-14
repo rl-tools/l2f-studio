@@ -216,12 +216,6 @@ struct DynInference {
             emscripten::val ret = emscripten::val::object();
             ret.set("pass", false); ret.set("error", std::string("no example data")); return ret;
         }
-        rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> input_tensor;
-        TI in_shape[] = {(TI)1, input_dim};
-        rlt::dyn::set_shape(input_tensor, (TI)2, in_shape);
-        input_tensor.type = rlt::dyn::Type::FLOAT32;
-        input_tensor.data = example_input_data.data();
-
         rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> output_tensor;
         TI out_shape[] = {(TI)output_dim};
         rlt::dyn::set_shape(output_tensor, (TI)1, out_shape);
@@ -229,7 +223,38 @@ struct DynInference {
         output_tensor.data = output_cache.data();
         output_tensor.capacity = output_cache.size();
 
-        rlt::evaluate(device, model, input_tensor, output_tensor, buffer);
+        bool use_tuple = false;
+        TI num_branches = 0;
+        const rlt::dyn::layers::Parallel<TI>* parallel_data = nullptr;
+        if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
+            parallel_data = &model.template as<const rlt::dyn::layers::Parallel<TI>>();
+            num_branches = parallel_data->num_input_dims;
+            if(num_branches >= 2) use_tuple = true;
+        }
+
+        if(use_tuple){
+            rlt::dyn::TensorTuple<TI> tuple;
+            tuple.num_tensors = num_branches;
+            TI offset = 0;
+            for(TI i = 0; i < num_branches; i++){
+                TI dim = parallel_data->input_dims[i];
+                TI shape[5]; TI rank;
+                infer_branch_shape(model.children[i], dim, shape, rank);
+                rlt::dyn::set_shape(tuple.tensors[i], rank, shape);
+                tuple.tensors[i].type = rlt::dyn::Type::FLOAT32;
+                tuple.tensors[i].data = example_input_data.data() + offset;
+                tuple.tensors[i].capacity = dim;
+                offset += dim;
+            }
+            rlt::evaluate(device, model, tuple, output_tensor, buffer);
+        } else {
+            rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> input_tensor;
+            TI in_shape[] = {(TI)1, input_dim};
+            rlt::dyn::set_shape(input_tensor, (TI)2, in_shape);
+            input_tensor.type = rlt::dyn::Type::FLOAT32;
+            input_tensor.data = example_input_data.data();
+            rlt::evaluate(device, model, input_tensor, output_tensor, buffer);
+        }
 
         float max_diff = 0;
         for(size_t i = 0; i < example_output_data.size() && i < output_dim; i++){

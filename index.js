@@ -125,6 +125,7 @@ class Policy{
         this.frame_buffer_capacity = 0
         this._last_obs_desc = null
         this.last_stacked_frames = null
+        this.target_buffers = null
     }
     _parse_frame_stack_config(obs_desc) {
         if(this._last_obs_desc === obs_desc) return
@@ -135,14 +136,16 @@ class Policy{
         })
         const visual = branches.find(b => b.startsWith("CameraRGBStacked"))
         if(visual){
+            const with_target = visual.startsWith("CameraRGBStackedWithTarget")
             const inner = visual.match(/\((.+)\)/)[1].split(",").map(s => Number(s.trim()))
-            this.frame_stack_config = { h: inner[1], w: inner[2], stride: inner[3], n_frames: inner[4] }
+            this.frame_stack_config = { h: inner[1], w: inner[2], stride: inner[3], n_frames: inner[4], with_target }
             this.frame_buffer_capacity = (this.frame_stack_config.n_frames - 1) * this.frame_stack_config.stride + 1
         } else {
             this.frame_stack_config = null
             this.frame_buffers = null
             this.frame_buffer_head = null
             this.frame_buffer_episode_start = null
+            this.target_buffers = null
         }
     }
     _ensure_frame_buffers(n_drones) {
@@ -152,6 +155,7 @@ class Policy{
         this.frame_buffers = Array.from({length: n_drones}, () => new Float32Array(buf_size))
         this.frame_buffer_head = new Array(n_drones).fill(0)
         this.frame_buffer_episode_start = new Array(n_drones).fill(0)
+        this.target_buffers = new Array(n_drones).fill(null)
     }
     get_observation(state, obs, trajectory) {
         let vehicle_state = null
@@ -233,16 +237,26 @@ class Policy{
                 return null
         }
     }
-    get_visual_observation(state, branch_string, ui_state, ui, parameters, drone_index) {
+    get_visual_observation(state, branch_string, ui_state, ui, parameters, drone_index, branch_index) {
         if(!ui || !ui.render_onboard_pixels || !ui_state) return []
+        const srgb = x => x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1.0 / 2.4) - 0.055
+        const cfg = this.frame_stack_config
+        // Render target first if needed (so the camera ends up at the drone pose after the regular render below)
+        if(cfg && cfg.with_target && this.target_buffers && this.target_buffers[drone_index] == null){
+            const target_render_state = { position: [0, 0, 0], orientation: [1, 0, 0, 0] }
+            const raw_target = ui.render_onboard_pixels(ui_state, target_render_state, parameters)
+            if(raw_target){
+                const target_buf = new Float32Array(raw_target.length)
+                for(let i = 0; i < raw_target.length; i++) target_buf[i] = srgb(raw_target[i])
+                this.target_buffers[drone_index] = target_buf
+            }
+        }
         const render_state = {
             position: Array.from(state.get_observation()).slice(0, 3),
             orientation: JSON.parse(state.get_state()).orientation,
         }
         const raw = ui.render_onboard_pixels(ui_state, render_state, parameters)
         if(!raw) return []
-        const srgb = x => x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1.0 / 2.4) - 0.055
-        const cfg = this.frame_stack_config
         if(!cfg || !this.frame_buffers || drone_index === undefined){
             for(let i = 0; i < raw.length; i++) raw[i] = srgb(raw[i])
             return Array.from(raw)
@@ -255,7 +269,12 @@ class Policy{
         buf.set(raw, (head % capacity) * pixel_count)
         this.frame_buffer_head[drone_index] = head + 1
         const n_pixels = cfg.w * cfg.h
-        const stacked_c = img_c * cfg.n_frames
+        const data_channels = img_c * cfg.n_frames + (cfg.with_target ? img_c : 0)
+        let stacked_c = data_channels
+        if(model && model.input_dims && branch_index !== undefined && model.input_dims[branch_index]){
+            const expected = Math.floor(model.input_dims[branch_index] / n_pixels)
+            if(expected >= data_channels) stacked_c = expected
+        }
         const output = new Float32Array(n_pixels * stacked_c)
         const ep_start = this.frame_buffer_episode_start[drone_index]
         for(let f = 0; f < cfg.n_frames; f++){
@@ -268,7 +287,16 @@ class Policy{
                 }
             }
         }
-        if(drone_index === 0) this.last_stacked_frames = { data: output, cfg }
+        if(cfg.with_target && this.target_buffers && this.target_buffers[drone_index]){
+            const target = this.target_buffers[drone_index]
+            const target_offset = cfg.n_frames * img_c
+            for(let p = 0; p < n_pixels; p++){
+                for(let c = 0; c < img_c; c++){
+                    output[p * stacked_c + target_offset + c] = target[p * img_c + c]
+                }
+            }
+        }
+        if(drone_index === 0) this.last_stacked_frames = { data: output, cfg: { ...cfg, channels: stacked_c } }
         return Array.from(output)
     }
     evaluate_step(states, ui_state, ui, parameters) {
@@ -286,8 +314,8 @@ class Policy{
                 const m = b.match(/^(CameraRGB\w*\([^)]+\)),\s*(.+)$/)
                 return m ? [m[1], m[2]] : [b]
             })
-            const branch_observations = branches.map(branch => {
-                if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i], i)
+            const branch_observations = branches.map((branch, branch_index) => {
+                if(branch.startsWith("Visual(") || branch.startsWith("CameraRGB")) return this.get_visual_observation(state, branch, ui_state, ui, parameters?.[i], i, branch_index)
                 return branch.split(".").map(x => this.get_observation(state, x, reference)).flat()
             })
             if(branch_observations.some(b => b === null || b.length === 0)) return new Float32Array(state.action_dim)
@@ -314,6 +342,9 @@ class Policy{
             for(let i = 0; i < this.frame_buffer_head.length; i++){
                 this.frame_buffer_episode_start[i] = this.frame_buffer_head[i]
             }
+        }
+        if(this.target_buffers){
+            for(let i = 0; i < this.target_buffers.length; i++) this.target_buffers[i] = null
         }
     }
     _get_reference(){
@@ -908,35 +939,37 @@ async function main() {
             return
         }
         const { data, cfg } = policy.last_stacked_frames
-        const { w, h, n_frames, stride } = cfg
-        const stacked_c = 3 * n_frames
-        // Ensure correct number of canvases
-        if(frame_stack_canvases.length !== n_frames){
+        const { w, h, n_frames, stride, with_target } = cfg
+        const stacked_c = cfg.channels || (3 * n_frames + (with_target ? 3 : 0))
+        const slot_count = n_frames + (with_target ? 1 : 0)
+        if(frame_stack_canvases.length !== slot_count){
             frame_stack_container.innerHTML = ""
             frame_stack_label = document.createElement("div")
             frame_stack_label.className = "frame-stack-label"
             frame_stack_container.appendChild(frame_stack_label)
             frame_stack_canvases.length = 0
-            for(let f = 0; f < n_frames; f++){
+            for(let f = 0; f < slot_count; f++){
                 const canvas = document.createElement("canvas")
                 canvas.width = w
                 canvas.height = h
                 canvas.style.width = Math.max(w, 48) + "px"
                 canvas.style.height = Math.max(h, 48) + "px"
+                if(with_target && f === slot_count - 1) canvas.title = "target"
                 frame_stack_container.appendChild(canvas)
                 frame_stack_canvases.push(canvas)
             }
         }
-        frame_stack_label.textContent = `Policy input: ${n_frames} frames (${w}x${h}, stride ${stride})`
+        frame_stack_label.textContent = `Policy input: ${n_frames} frames${with_target ? " + target" : ""} (${w}x${h}, stride ${stride})`
         frame_stack_container.classList.add("active")
-        for(let f = 0; f < n_frames; f++){
+        for(let f = 0; f < slot_count; f++){
             const ctx = frame_stack_canvases[f].getContext("2d")
             const img_data = ctx.createImageData(w, h)
             const pixels = img_data.data
+            const c_offset = f * 3
             for(let p = 0; p < w * h; p++){
-                const r = data[p * stacked_c + f * 3 + 0]
-                const g = data[p * stacked_c + f * 3 + 1]
-                const b = data[p * stacked_c + f * 3 + 2]
+                const r = data[p * stacked_c + c_offset + 0]
+                const g = data[p * stacked_c + c_offset + 1]
+                const b = data[p * stacked_c + c_offset + 2]
                 pixels[p * 4 + 0] = Math.round(r * 255)
                 pixels[p * 4 + 1] = Math.round(g * 255)
                 pixels[p * 4 + 2] = Math.round(b * 255)
