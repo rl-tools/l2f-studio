@@ -914,8 +914,12 @@ async function main() {
             child.quaternion.copy(q_inv)
             child.position.copy(T).sub(new THREE.Vector3().copy(T).applyQuaternion(q_inv))
         })
+        if(proxy_controller && proxy_controller.policy && proxy_controller.policy.target_buffers){
+            const tb = proxy_controller.policy.target_buffers
+            for(let i = 0; i < tb.length; i++) tb[i] = null
+        }
     }
-    ;[...scene_off, ...scene_rot].forEach(el => el.addEventListener("input", apply_scene_transform))
+    ;[...scene_off, ...scene_rot].forEach(el => el.addEventListener("change", apply_scene_transform))
     document.getElementById("scene-preview-checkbox").addEventListener("change", (e) => {
         if(l2f.ui_state) l2f.ui_state.show_onboard_preview = e.target.checked
     })
