@@ -147,11 +147,11 @@ class Policy{
             this.frame_buffer_capacity = (this.frame_stack_config.n_frames - 1) * this.frame_stack_config.stride + 1
         } else {
             this.frame_stack_config = null
-            this.frame_buffers = null
-            this.frame_buffer_head = null
-            this.frame_buffer_episode_start = null
-            this.target_buffers = null
         }
+        this.frame_buffers = null
+        this.frame_buffer_head = null
+        this.frame_buffer_episode_start = null
+        this.target_buffers = null
     }
     _ensure_frame_buffers(n_drones) {
         if(this.frame_buffers && this.frame_buffers.length === n_drones) return
@@ -534,10 +534,11 @@ async function main() {
         }
         event.target.value = "";
     })
-    document.getElementById("observations").addEventListener("keydown", (e) => {
+    document.getElementById("observations").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
             document.getElementById("observations").observation = document.getElementById("observations").value
+            await reload_onboard_from_obs(scene_select.value)
         }
     })
     const controller_code_loaded = fetch("./controller.js").then(async (response) => {
@@ -875,8 +876,7 @@ async function main() {
         const entry = Object.values(SCENE_REGISTRY).find(e => e.hash === scene_select.value)
         set_scene_defaults(entry)
     })
-    document.getElementById("scene-load-btn").addEventListener("click", async () => {
-        const hash = scene_select.value
+    const reload_onboard_from_obs = async (hash) => {
         const obs_desc = document.getElementById("observations").observation || ""
         const visual_branch = obs_desc.split(";").find(b => b.startsWith("Visual(") || b.startsWith("CameraRGB"))
         let cam_w = 64, cam_h = 64, fov = 1.1132
@@ -893,6 +893,9 @@ async function main() {
             apply_scene_transform()
             l2f.ui_state.show_onboard_preview = document.getElementById("scene-preview-checkbox").checked
         }
+    }
+    document.getElementById("scene-load-btn").addEventListener("click", async () => {
+        await reload_onboard_from_obs(scene_select.value)
     })
     const apply_scene_transform = () => {
         if(!l2f.ui_state) return
