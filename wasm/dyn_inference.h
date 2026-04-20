@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <cstdio>
 
 namespace rlt = rl_tools;
 
@@ -27,8 +28,29 @@ struct DynInference {
     std::string meta_json;
     bool loaded = false;
     std::vector<float> output_cache;
-    std::vector<float> example_input_data;
+    std::vector<std::vector<float>> example_inputs_data;
+    std::vector<std::vector<TI>> example_inputs_shape;
     std::vector<float> example_output_data;
+    std::vector<TI> example_output_shape;
+
+    static bool read_dataset_float(hid_t parent, const char* name, std::vector<TI>& shape_out, std::vector<float>& data_out) {
+        if(H5Lexists(parent, name, H5P_DEFAULT) <= 0) return false;
+        hid_t ds = H5Dopen2(parent, name, H5P_DEFAULT);
+        if(ds < 0) return false;
+        hid_t space = H5Dget_space(ds);
+        int rank = H5Sget_simple_extent_ndims(space);
+        hsize_t dims[8];
+        if(rank < 0 || rank > 8){ H5Sclose(space); H5Dclose(ds); return false; }
+        H5Sget_simple_extent_dims(space, dims, nullptr);
+        shape_out.resize(rank);
+        TI total = 1;
+        for(int d = 0; d < rank; d++){ shape_out[d] = (TI)dims[d]; total *= (TI)dims[d]; }
+        data_out.resize(total);
+        H5Dread(ds, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, data_out.data());
+        H5Sclose(space);
+        H5Dclose(ds);
+        return true;
+    }
 
     bool load(const std::string& path) {
         if(loaded) destroy();
@@ -45,39 +67,72 @@ struct DynInference {
 
         if(!rlt::load(device, model, actor_group)) return false;
 
-        // Load example input/output data
-        hid_t example_group_id = H5Gopen2(file.id, "example", H5P_DEFAULT);
-        if(example_group_id >= 0){
-            hid_t ds_in = H5Dopen2(example_group_id, "input", H5P_DEFAULT);
-            if(ds_in >= 0){
-                hid_t space = H5Dget_space(ds_in);
-                int rank = H5Sget_simple_extent_ndims(space);
-                hsize_t dims[5];
-                H5Sget_simple_extent_dims(space, dims, nullptr);
-                input_dim = dims[rank - 1];
-                TI total_in = 1; for(int d = 0; d < rank; d++) total_in *= dims[d];
-                example_input_data.resize(total_in);
-                H5Dread(ds_in, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, example_input_data.data());
-                H5Sclose(space);
-                H5Dclose(ds_in);
+        if(H5Lexists(file.id, "example", H5P_DEFAULT) > 0){
+            hid_t example_group_id = H5Gopen2(file.id, "example", H5P_DEFAULT);
+            if(example_group_id >= 0){
+                if(H5Lexists(example_group_id, "inputs", H5P_DEFAULT) > 0){
+                    hid_t inputs_group_id = H5Gopen2(example_group_id, "inputs", H5P_DEFAULT);
+                    if(inputs_group_id >= 0){
+                        for(TI i = 0; i < rlt::dyn::TensorTuple<TI>::MAX_TENSORS; i++){
+                            char name[16]; std::snprintf(name, sizeof(name), "%lu", (unsigned long)i);
+                            std::vector<TI> shape; std::vector<float> data;
+                            if(!read_dataset_float(inputs_group_id, name, shape, data)) break;
+                            example_inputs_shape.push_back(std::move(shape));
+                            example_inputs_data.push_back(std::move(data));
+                        }
+                        H5Gclose(inputs_group_id);
+                    }
+                }
+                else{
+                    std::vector<TI> shape; std::vector<float> data;
+                    if(read_dataset_float(example_group_id, "input", shape, data)){
+                        example_inputs_shape.push_back(std::move(shape));
+                        example_inputs_data.push_back(std::move(data));
+                    }
+                }
+
+                bool output_loaded = false;
+                if(H5Lexists(example_group_id, "outputs", H5P_DEFAULT) > 0){
+                    hid_t outputs_group_id = H5Gopen2(example_group_id, "outputs", H5P_DEFAULT);
+                    if(outputs_group_id >= 0){
+                        output_loaded = read_dataset_float(outputs_group_id, "0", example_output_shape, example_output_data);
+                        H5Gclose(outputs_group_id);
+                    }
+                }
+                if(!output_loaded){
+                    read_dataset_float(example_group_id, "output", example_output_shape, example_output_data);
+                }
+                H5Gclose(example_group_id);
             }
-            hid_t ds_out = H5Dopen2(example_group_id, "output", H5P_DEFAULT);
-            if(ds_out >= 0){
-                hid_t space_out = H5Dget_space(ds_out);
-                int rank_out = H5Sget_simple_extent_ndims(space_out);
-                hsize_t dims_out[5];
-                H5Sget_simple_extent_dims(space_out, dims_out, nullptr);
-                TI total_out = 1; for(int d = 0; d < rank_out; d++) total_out *= dims_out[d];
-                example_output_data.resize(total_out);
-                H5Dread(ds_out, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, example_output_data.data());
-                H5Sclose(space_out);
-                H5Dclose(ds_out);
-            }
-            H5Gclose(example_group_id);
         }
 
-        TI input_shape[] = {1, input_dim};
-        rlt::dyn::propagate_shapes(model, input_shape, (TI)2);
+        if(!example_inputs_shape.empty()){
+            const auto& sh = example_inputs_shape[0];
+            TI feature_start = (sh.size() >= 3) ? 2 : (sh.size() >= 2 ? 1 : 0);
+            TI flat = 1;
+            for(size_t d = feature_start; d < sh.size(); d++) flat *= sh[d];
+            input_dim = flat;
+        }
+
+        if(model.type == rlt::dyn::LayerType::PARALLEL && !example_inputs_data.empty()){
+            rlt::dyn::TensorTuple<TI> tuple;
+            TI n = (TI)example_inputs_data.size();
+            if(n > rlt::dyn::TensorTuple<TI>::MAX_TENSORS) n = rlt::dyn::TensorTuple<TI>::MAX_TENSORS;
+            tuple.num_tensors = n;
+            for(TI i = 0; i < n; i++){
+                rlt::dyn::set_shape(tuple.tensors[i],
+                    (TI)example_inputs_shape[i].size(),
+                    example_inputs_shape[i].data());
+                tuple.tensors[i].type = rlt::dyn::Type::FLOAT32;
+                tuple.tensors[i].data = example_inputs_data[i].data();
+                tuple.tensors[i].capacity = example_inputs_data[i].size();
+            }
+            rlt::dyn::propagate_shapes(model, tuple);
+        }
+        else{
+            TI legacy_shape[] = {(TI)1, input_dim};
+            rlt::dyn::propagate_shapes(model, legacy_shape, (TI)2);
+        }
         output_dim = model.output_shape[model.output_rank - 1];
 
         buffer.layer = &model;
@@ -96,7 +151,7 @@ struct DynInference {
     int get_num_branches() const {
         if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
             auto& p = model.template as<const rlt::dyn::layers::Parallel<TI>>();
-            if(p.num_input_dims > 0) return (int)p.num_input_dims;
+            if(p.num_branches > 0) return (int)p.num_branches;
         }
         return 1;
     }
@@ -105,8 +160,14 @@ struct DynInference {
         emscripten::val arr = emscripten::val::array();
         if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
             auto& p = model.template as<const rlt::dyn::layers::Parallel<TI>>();
-            for(TI i = 0; i < p.num_input_dims; i++) arr.set((unsigned)i, (int)p.input_dims[i]);
-            if(p.num_input_dims > 0) return arr;
+            for(TI i = 0; i < p.num_branches; i++){
+                TI rank = p.input_ranks[i];
+                TI feature_start = (rank >= 3) ? 2 : (rank >= 2 ? 1 : 0);
+                TI flat = 1;
+                for(TI d = feature_start; d < rank; d++) flat *= p.input_shapes[i][d];
+                arr.set((unsigned)i, (int)flat);
+            }
+            if(p.num_branches > 0) return arr;
         }
         arr.set(0u, (int)input_dim);
         return arr;
@@ -212,52 +273,46 @@ struct DynInference {
     }
 
     emscripten::val verify() {
-        if(example_input_data.empty() || example_output_data.empty()){
+        if(example_inputs_data.empty() || example_output_data.empty()){
             emscripten::val ret = emscripten::val::object();
             ret.set("pass", false); ret.set("error", std::string("no example data")); return ret;
         }
         rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> output_tensor;
-        TI out_shape[] = {(TI)output_dim};
+        TI out_shape[] = {(TI)model.output_size};
         rlt::dyn::set_shape(output_tensor, (TI)1, out_shape);
         output_tensor.type = rlt::dyn::Type::FLOAT32;
         output_tensor.data = output_cache.data();
         output_tensor.capacity = output_cache.size();
 
-        bool use_tuple = false;
-        TI num_branches = 0;
-        const rlt::dyn::layers::Parallel<TI>* parallel_data = nullptr;
-        if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
-            parallel_data = &model.template as<const rlt::dyn::layers::Parallel<TI>>();
-            num_branches = parallel_data->num_input_dims;
-            if(num_branches >= 2) use_tuple = true;
-        }
-
-        if(use_tuple){
+        if(model.type == rlt::dyn::LayerType::PARALLEL){
             rlt::dyn::TensorTuple<TI> tuple;
-            tuple.num_tensors = num_branches;
-            TI offset = 0;
-            for(TI i = 0; i < num_branches; i++){
-                TI dim = parallel_data->input_dims[i];
-                TI shape[5]; TI rank;
-                infer_branch_shape(model.children[i], dim, shape, rank);
-                rlt::dyn::set_shape(tuple.tensors[i], rank, shape);
+            TI n = (TI)example_inputs_data.size();
+            if(n > rlt::dyn::TensorTuple<TI>::MAX_TENSORS) n = rlt::dyn::TensorTuple<TI>::MAX_TENSORS;
+            tuple.num_tensors = n;
+            for(TI i = 0; i < n; i++){
+                rlt::dyn::set_shape(tuple.tensors[i],
+                    (TI)example_inputs_shape[i].size(),
+                    example_inputs_shape[i].data());
                 tuple.tensors[i].type = rlt::dyn::Type::FLOAT32;
-                tuple.tensors[i].data = example_input_data.data() + offset;
-                tuple.tensors[i].capacity = dim;
-                offset += dim;
+                tuple.tensors[i].data = example_inputs_data[i].data();
+                tuple.tensors[i].capacity = example_inputs_data[i].size();
             }
             rlt::evaluate(device, model, tuple, output_tensor, buffer);
-        } else {
+        }
+        else{
             rlt::dyn::Tensor<rlt::dyn::TensorSpecification<TI>> input_tensor;
-            TI in_shape[] = {(TI)1, input_dim};
-            rlt::dyn::set_shape(input_tensor, (TI)2, in_shape);
+            rlt::dyn::set_shape(input_tensor,
+                (TI)example_inputs_shape[0].size(),
+                example_inputs_shape[0].data());
             input_tensor.type = rlt::dyn::Type::FLOAT32;
-            input_tensor.data = example_input_data.data();
+            input_tensor.data = example_inputs_data[0].data();
+            input_tensor.capacity = example_inputs_data[0].size();
             rlt::evaluate(device, model, input_tensor, output_tensor, buffer);
         }
 
         float max_diff = 0;
-        for(size_t i = 0; i < example_output_data.size() && i < output_dim; i++){
+        size_t compare_n = example_output_data.size() < output_cache.size() ? example_output_data.size() : output_cache.size();
+        for(size_t i = 0; i < compare_n; i++){
             float diff = std::abs(output_cache[i] - example_output_data[i]);
             if(diff > max_diff) max_diff = diff;
         }
@@ -265,7 +320,7 @@ struct DynInference {
         ret.set("max_diff", max_diff);
         ret.set("pass", max_diff < 1e-4f);
         ret.set("expected", emscripten::val(emscripten::typed_memory_view(example_output_data.size(), example_output_data.data())));
-        ret.set("actual", emscripten::val(emscripten::typed_memory_view(output_dim, output_cache.data())));
+        ret.set("actual", emscripten::val(emscripten::typed_memory_view(output_cache.size(), output_cache.data())));
         return ret;
     }
 
@@ -276,6 +331,10 @@ struct DynInference {
         rlt::free(device, buffer);
         rlt::free(device, model);
         output_cache.clear();
+        example_inputs_data.clear();
+        example_inputs_shape.clear();
+        example_output_data.clear();
+        example_output_shape.clear();
         loaded = false;
         input_dim = 0;
         output_dim = 0;
