@@ -535,14 +535,18 @@ async function load_model(checkpoint) {
     model = await rlt.load(checkpoint)
     if(model.verify){
         const check = model.verify()
-        if(!check.pass) console.error("Model verification FAILED for " + model.checkpoint_name + ": max_diff=" + check.max_diff + " expected=" + Array.from(check.expected) + " actual=" + Array.from(check.actual))
+        if(!check.pass){
+            const expected = check.expected ? Array.from(check.expected) : []
+            const actual = check.actual ? Array.from(check.actual) : []
+            console.error("Model verification FAILED for " + model.checkpoint_name + ": max_diff=" + check.max_diff + " expected=" + expected + " actual=" + actual)
+        }
         else console.log("Model verification passed for " + model.checkpoint_name + ": max_diff=" + check.max_diff)
     }
     const checkpoint_span = document.getElementById("checkpoint-name")
     checkpoint_span.textContent = model.checkpoint_name
     checkpoint_span.title = model.description()
     await commit_observation(model.meta.environment.observation)
-    proxy_controller.reset()
+    if(proxy_controller) proxy_controller.reset()
     // Restore prior pause state (if the loop was running before, resume it).
     if(l2f && was_paused === false) l2f.pause = false
 }
