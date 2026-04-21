@@ -140,10 +140,11 @@ function parse_camera_spec(obs_desc){
 }
 
 // Single entry point for "the observation string changed". Mirrors the string
-// into the DOM, parses the camera spec, and writes the dims into l2f.parameters[*].visual
-// so the UI's setup/reconcile paths (which already read parameters.visual) see the
-// current values. Returns the parsed spec (or null if no visual branch).
-function commit_observation(obs_string){
+// into the DOM, parses the camera spec, writes the dims into l2f.parameters[*].visual,
+// and (on the first transition into visual mode) auto-reduces drones to 1 and loads
+// the first registered scene. Returns the parsed spec (or null if no visual branch).
+let last_visual_active = false
+async function commit_observation(obs_string){
     const obs_input = document.getElementById("observations")
     obs_input.observation = obs_string
     obs_input.value = obs_string
@@ -161,7 +162,54 @@ function commit_observation(obs_string){
         if(preview_cb) preview_cb.checked = true
         if(l2f && l2f.ui_state) l2f.ui_state.show_onboard_preview = true
     }
+
+    if(spec && !last_visual_active){
+        // Only latch if auto-setup actually ran. If l2f isn't ready yet
+        // (commit_observation fired from load_model before main() constructed L2F),
+        // leave the flag false so a subsequent commit retries.
+        const ok = await auto_setup_visual_mode()
+        if(ok) last_visual_active = true
+    } else if(!spec){
+        last_visual_active = false
+    }
+
     return spec
+}
+
+// On first transition into visual mode: single-drone (onboard preview only renders drone 0)
+// and kick off the first registered scene load so the camera has something to look at.
+// Respects user overrides — skips drone resize if already at 1, skips scene load if a scene is loaded.
+// Returns true if it actually ran, false if l2f wasn't ready.
+async function auto_setup_visual_mode(){
+    if(!l2f) return false
+    try { await l2f.initialized } catch(e) { return false }
+
+    if(l2f.parameters && l2f.parameters.length > 1){
+        await l2f.change_num_quadrotors(1, l2f.parameters[0])
+    }
+
+    if(!l2f.ui_state || !l2f.ui_state.onboard_scene){
+        const first_entry = Object.values(SCENE_REGISTRY)[0]
+        if(first_entry){
+            const scene_select = document.getElementById("scene-selector")
+            if(scene_select) scene_select.value = first_entry.hash
+            // Mirror set_scene_defaults: populate offset/rotation inputs so the scene-load
+            // handler's apply_scene_transform picks them up.
+            const off = first_entry.offset || [0, 0, 0]
+            const rot = first_entry.rotation || [0, 0, 0]
+            const off_ids = ["scene-offset-x", "scene-offset-y", "scene-offset-z"]
+            const rot_ids = ["scene-rot-r", "scene-rot-p", "scene-rot-y"]
+            for(let i = 0; i < 3; i++){
+                const e_off = document.getElementById(off_ids[i])
+                const e_rot = document.getElementById(rot_ids[i])
+                if(e_off) e_off.value = off[i]
+                if(e_rot) e_rot.value = rot[i]
+            }
+            const btn = document.getElementById("scene-load-btn")
+            if(btn) btn.click()  // triggers reload_onboard_from_obs; async, fire-and-forget
+        }
+    }
+    return true
 }
 
 class Policy{
@@ -480,7 +528,7 @@ async function load_model(checkpoint) {
     const checkpoint_span = document.getElementById("checkpoint-name")
     checkpoint_span.textContent = model.checkpoint_name
     checkpoint_span.title = model.description()
-    commit_observation(model.meta.environment.observation)
+    await commit_observation(model.meta.environment.observation)
     proxy_controller.reset()
 }
 
@@ -581,7 +629,7 @@ async function main() {
     document.getElementById("observations").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            commit_observation(e.target.value)
+            await commit_observation(e.target.value)
             await reload_onboard_from_obs(scene_select.value)
         }
     })
@@ -793,9 +841,10 @@ async function main() {
 
     l2f.initialized.then(async () => {
         // Startup-load races: load_model may have run commit_observation before l2f.parameters existed.
-        // Re-commit before any await so visual dims land in parameters.visual ahead of the first control tick.
+        // Re-commit now that the L2F backend is initialized so visual dims land in parameters.visual
+        // and the one-shot auto-setup (drones=1, first scene) fires.
         const current_obs = document.getElementById("observations").observation
-        if(current_obs) commit_observation(current_obs)
+        if(current_obs) await commit_observation(current_obs)
         await parameter_manager.initialized
         const sim_container_cover = document.getElementById("sim-container-cover")
         sim_container_cover.style.display = "none"
@@ -972,7 +1021,7 @@ async function main() {
     })
 
     const obs_input = document.getElementById("observations")
-    obs_input.addEventListener("change", () => commit_observation(obs_input.value))
+    obs_input.addEventListener("change", async () => { await commit_observation(obs_input.value) })
 
     // Frame stack preview
     const frame_stack_container = document.getElementById("frame-stack-preview")
