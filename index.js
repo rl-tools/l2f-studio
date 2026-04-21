@@ -744,7 +744,7 @@ async function main() {
         checkpoint = await (await fetch(file_url)).arrayBuffer()
         localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
     }
-    load_model(checkpoint)
+    await load_model(checkpoint)
 
     const sim_container = document.getElementById("sim-container")
     proxy_controller = new ProxyController(new Policy(model))
@@ -1187,4 +1187,3 @@ document.body.addEventListener('drop', e => {
         reader.readAsArrayBuffer(file);
     }
 }, false);
-
