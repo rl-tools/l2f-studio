@@ -899,7 +899,13 @@ async function main() {
         }
         console.log("setting parameters for vehicles: ", ids)
         console.log("parameters: ", parameters)
-        
+
+        // Preset JSONs lack the visual camera spec stamped in by commit_observation; carry it forward.
+        const previous_visual = l2f.parameters?.[ids[0]]?.visual
+        if (previous_visual) {
+            parameters.visual = { ...previous_visual, ...(parameters.visual || {}) }
+        }
+
         // Reset trajectory steps to all zeros (we don't use the trajectory from the parameters, because we need to feed it dynamically and the user should be able to tweak it from the UI)
         if (parameters.trajectory && parameters.trajectory.steps) {
             parameters.trajectory.steps = parameters.trajectory.steps.map(() => ({
