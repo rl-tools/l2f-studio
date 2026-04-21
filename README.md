@@ -29,4 +29,5 @@ DEBUG=1 ./build_dyn_emscripten.sh
 Then in the Chrome C/C++ DevTools Extension add the following path substitution (Default settings, adjust path based on your fs):
 ```
 /rl_tools => /home/jonas/mono/rl-tools
+/src => /home/jonas/mono/static/l2f-studio/wasm
 ```
