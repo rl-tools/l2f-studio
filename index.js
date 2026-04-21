@@ -17,6 +17,7 @@ const file = urlParams.get('file');
 const file_url = file ? file : "./blob/checkpoint.h5"
 
 let proxy_controller = null
+let l2f = null
 
 async function sleep(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -119,6 +120,50 @@ let model = null; Object.defineProperty(window, '_model', { get: () => model })
 let trajectory = null
 let trajectory_offset = 0
 let trajectory_offset_axis = 0
+
+function parse_camera_spec(obs_desc){
+    if(!obs_desc) return null
+    const branches = obs_desc.split(";").flatMap(b => {
+        const m = b.match(/^(CameraRGB\w*\([^)]+\)),\s*(.+)$/)
+        return m ? [m[1], m[2]] : [b]
+    })
+    const visual = branches.find(b => b.startsWith("CameraRGB") || b.startsWith("Visual("))
+    if(!visual) return null
+    const inner_match = visual.match(/\((.+)\)/)
+    if(!inner_match) return null
+    const inner = inner_match[1].split(",").map(s => Number(s.trim()))
+    if(visual.startsWith("CameraRGB")){
+        return { fov: inner[0], cam_h: inner[1], cam_w: inner[2] }
+    }
+    const fov = inner[3] !== undefined ? inner[3] : 1.1132
+    return { cam_w: inner[0], cam_h: inner[1], fov }
+}
+
+// Single entry point for "the observation string changed". Mirrors the string
+// into the DOM, parses the camera spec, and writes the dims into l2f.parameters[*].visual
+// so the UI's setup/reconcile paths (which already read parameters.visual) see the
+// current values. Returns the parsed spec (or null if no visual branch).
+function commit_observation(obs_string){
+    const obs_input = document.getElementById("observations")
+    obs_input.observation = obs_string
+    obs_input.value = obs_string
+    const spec = parse_camera_spec(obs_string)
+    if(spec && l2f && l2f.parameters){
+        for(const p of l2f.parameters){
+            p.visual = p.visual || {}
+            p.visual.cam_width = spec.cam_w
+            p.visual.cam_height = spec.cam_h
+            p.visual.fov = spec.fov
+        }
+    }
+    if(spec){
+        const preview_cb = document.getElementById("scene-preview-checkbox")
+        if(preview_cb) preview_cb.checked = true
+        if(l2f && l2f.ui_state) l2f.ui_state.show_onboard_preview = true
+    }
+    return spec
+}
+
 class Policy{
     constructor() {
         this.step = 0
@@ -435,8 +480,7 @@ async function load_model(checkpoint) {
     const checkpoint_span = document.getElementById("checkpoint-name")
     checkpoint_span.textContent = model.checkpoint_name
     checkpoint_span.title = model.description()
-    document.getElementById("observations").value = model.meta.environment.observation
-    document.getElementById("observations").observation = model.meta.environment.observation
+    commit_observation(model.meta.environment.observation)
     proxy_controller.reset()
 }
 
@@ -537,7 +581,7 @@ async function main() {
     document.getElementById("observations").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            document.getElementById("observations").observation = document.getElementById("observations").value
+            commit_observation(e.target.value)
             await reload_onboard_from_obs(scene_select.value)
         }
     })
@@ -696,7 +740,7 @@ async function main() {
 
     console.log("Waiting for trajectory to be initialized")
 
-    const l2f = new L2F(sim_container, Array(10).fill(default_parameters), proxy_controller, seed)
+    l2f = new L2F(sim_container, Array(10).fill(default_parameters), proxy_controller, seed)
     window._l2f = l2f
     
     // Wire trajectory updates to invalidate rendered trajectory lines
@@ -748,6 +792,10 @@ async function main() {
     })
 
     l2f.initialized.then(async () => {
+        // Startup-load races: load_model may have run commit_observation before l2f.parameters existed.
+        // Re-commit before any await so visual dims land in parameters.visual ahead of the first control tick.
+        const current_obs = document.getElementById("observations").observation
+        if(current_obs) commit_observation(current_obs)
         await parameter_manager.initialized
         const sim_container_cover = document.getElementById("sim-container-cover")
         sim_container_cover.style.display = "none"
@@ -877,17 +925,10 @@ async function main() {
         set_scene_defaults(entry)
     })
     const reload_onboard_from_obs = async (hash) => {
-        const obs_desc = document.getElementById("observations").observation || ""
-        const visual_branch = obs_desc.split(";").find(b => b.startsWith("Visual(") || b.startsWith("CameraRGB"))
-        let cam_w = 64, cam_h = 64, fov = 1.1132
-        if(visual_branch){
-            const inner = visual_branch.match(/\((.+)\)/)[1].split(",").map(Number)
-            if(visual_branch.startsWith("CameraRGB")){
-                fov = inner[0]; cam_h = inner[1]; cam_w = inner[2]
-            } else {
-                cam_w = inner[0]; cam_h = inner[1]; if(inner[3] !== undefined) fov = inner[3]
-            }
-        }
+        const visual = l2f?.parameters?.[0]?.visual
+        const cam_w = visual?.cam_width ?? 64
+        const cam_h = visual?.cam_height ?? 64
+        const fov = visual?.fov ?? 1.1132
         if(l2f.ui && l2f.ui.setup_onboard_scene){
             await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, fov)
             apply_scene_transform()
@@ -927,26 +968,11 @@ async function main() {
         if(l2f.ui_state) l2f.ui_state.show_onboard_preview = e.target.checked
     })
     document.getElementById("scene-obs-res-checkbox").addEventListener("change", (e) => {
-        if(l2f.ui_state){
-            l2f.ui_state.onboard_obs_resolution = e.target.checked
-            if(l2f.ui_state.onboard_overlay_quad){
-                l2f.ui_state.onboard_overlay_quad = null
-                l2f.ui_state.onboard_overlay_blit_scene = null
-                l2f.ui_state.onboard_overlay_blit_camera = null
-            }
-        }
+        if(l2f.ui_state) l2f.ui_state.onboard_obs_resolution = e.target.checked
     })
 
-    // Auto-enable preview when observation string contains Visual
     const obs_input = document.getElementById("observations")
-    const update_preview_from_obs = () => {
-        const obs = obs_input.observation || obs_input.value || ""
-        if(obs.split(";").some(b => b.startsWith("Visual(") || b.startsWith("CameraRGB"))){
-            document.getElementById("scene-preview-checkbox").checked = true
-            if(l2f.ui_state) l2f.ui_state.show_onboard_preview = true
-        }
-    }
-    obs_input.addEventListener("change", update_preview_from_obs)
+    obs_input.addEventListener("change", () => commit_observation(obs_input.value))
 
     // Frame stack preview
     const frame_stack_container = document.getElementById("frame-stack-preview")

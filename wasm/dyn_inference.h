@@ -219,25 +219,14 @@ struct DynInference {
         return evaluate_step(-1, js_input);
     }
 
-    void infer_branch_shape(const rlt::dyn::Layer<TI>& branch, TI dim, TI* shape, TI& rank) {
-        const rlt::dyn::Layer<TI>* first = &branch;
-        while(first->num_children > 0 && (first->type == rlt::dyn::LayerType::SEQUENTIAL || first->type == rlt::dyn::LayerType::MLP))
-            first = &first->children[0];
-        if(first->type == rlt::dyn::LayerType::CONV2D){
-            auto& conv = first->template as<const rlt::dyn::layers::Conv2d<TI>>();
-            TI ic = conv.input_channels;
-            TI spatial = (ic > 0) ? dim / ic : 0;
-            TI side = 1; while(side * side < spatial) side++;
-            if(spatial > 0 && side * side == spatial){
-                shape[0] = 1; shape[1] = side; shape[2] = side; shape[3] = ic; rank = 4; return;
-            }
-        }
-        shape[0] = 1; shape[1] = dim; rank = 2;
-    }
-
     emscripten::val evaluate_tuple(emscripten::val js_inputs) {
         unsigned int n = js_inputs["length"].as<unsigned int>();
         if(n > rlt::dyn::TensorTuple<TI>::MAX_TENSORS) n = rlt::dyn::TensorTuple<TI>::MAX_TENSORS;
+
+        const rlt::dyn::layers::Parallel<TI>* parallel = nullptr;
+        if(model.type == rlt::dyn::LayerType::PARALLEL && model.data){
+            parallel = &model.template as<const rlt::dyn::layers::Parallel<TI>>();
+        }
 
         std::vector<std::vector<float>> storage(n);
         rlt::dyn::TensorTuple<TI> tuple;
@@ -249,9 +238,17 @@ struct DynInference {
             emscripten::val heap_view = emscripten::val(emscripten::typed_memory_view(len, storage[i].data()));
             heap_view.call<void>("set", js_in);
 
-            TI shape[5]; TI rank;
-            if(model.type == rlt::dyn::LayerType::PARALLEL && i < model.num_children){
-                infer_branch_shape(model.children[i], (TI)len, shape, rank);
+            TI shape[rlt::dyn::TensorSpecification<TI>::MAX_RANK]; TI rank;
+            if(parallel != nullptr && i < parallel->num_branches && parallel->input_ranks[i] > 0){
+                // Use the per-branch INPUT_SHAPE that the parallel persist saved at checkpoint-write time.
+                // This is the only source that handles non-square spatial dimensions; the previous
+                // sqrt(spatial) heuristic silently failed for aspects like 80x50.
+                rank = parallel->input_ranks[i];
+                for(TI d = 0; d < rank; d++) shape[d] = parallel->input_shapes[i][d];
+                // Stored shape is [STEPS, BATCH, ...features]. Override the leading step/batch dims to 1
+                // so the product matches the single-sample flat input provided by JS.
+                TI leading = (rank >= 3) ? 2 : (rank >= 2 ? 1 : 0);
+                for(TI d = 0; d < leading; d++) shape[d] = 1;
             } else {
                 shape[0] = 1; shape[1] = len; rank = 2;
             }
