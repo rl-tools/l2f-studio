@@ -20,3 +20,13 @@ npm install --save-dev esbuild@0.25.2
 ```
 
 The `./blob/registry` is populated by `src/rl/environments/l2f/export_dynamics.cpp`.
+
+
+To debug the dyn backend:
+```
+DEBUG=1 ./build_dyn_emscripten.sh
+```
+Then in the Chrome C/C++ DevTools Extension add the following path substitution (Default settings, adjust path based on your fs):
+```
+/rl_tools => /home/jonas/mono/rl-tools
+```
