@@ -633,7 +633,7 @@ async function main() {
             const reader = new FileReader();
             reader.onload = async function (e) {
                 const array_buffer = e.target.result;
-                load_model(array_buffer)
+                await load_model(array_buffer)
                 console.log("loaded model: ", model.checkpoint_name)
                 showStatus(`Loaded model: ${model.checkpoint_name}`);
             };
@@ -1174,7 +1174,7 @@ document.body.addEventListener('drop', e => {
         reader.onload = async function (e) {
             const array_buffer = e.target.result;
             localStorage.setItem("checkpoint", arrayBufferToBase64(array_buffer))
-            load_model(array_buffer)
+            await load_model(array_buffer)
             console.log("loaded model: ", model.checkpoint_name)
             showStatus(`Loaded model: ${model.checkpoint_name}`);
         };
