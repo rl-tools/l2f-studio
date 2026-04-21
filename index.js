@@ -518,7 +518,20 @@ async function load_model(checkpoint) {
         checkpoint = await (await fetch(checkpoint)).arrayBuffer()
     }
     localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
-    if(model) model.destroy()
+    // Before destroying the old model: pause the control loop immediately (so it
+    // can't call evaluate_step on the destroyed inference during subsequent awaits)
+    // and drop policy state IDs (which reference the about-to-be-freed WASM state vector).
+    const was_paused = l2f ? l2f.pause : null
+    if(l2f) l2f.pause = true
+    if(proxy_controller && proxy_controller.policy){
+        proxy_controller.policy.policy_states = null
+    }
+    const old_model = model
+    model = null
+    if(old_model){
+        try { old_model.destroy() }
+        catch(e){ console.error("Failed to destroy previous model (continuing): ", e) }
+    }
     model = await rlt.load(checkpoint)
     if(model.verify){
         const check = model.verify()
@@ -530,6 +543,8 @@ async function load_model(checkpoint) {
     checkpoint_span.title = model.description()
     await commit_observation(model.meta.environment.observation)
     proxy_controller.reset()
+    // Restore prior pause state (if the loop was running before, resume it).
+    if(l2f && was_paused === false) l2f.pause = false
 }
 
 async function main() {
