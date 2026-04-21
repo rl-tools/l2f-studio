@@ -11,7 +11,7 @@ docker run -it --rm \
 --mount type=bind,source=$(pwd)/wasm,target=/mnt,readonly \
 --mount type=bind,source=$(pwd)/blob,target=/blob \
 --mount type=bind,source=$(cd ../../rl-tools/ && pwd),target=/rl_tools,readonly \
---mount type=bind,source=$(cd ../../external/json && pwd),target=/json,readonly \
+--mount type=bind,source=$(cd external/json && pwd),target=/json,readonly \
 -w /mnt \
 emscripten/emsdk:4.0.17 \
 emcc -std=c++17 -I /rl_tools/include -I /json/include -DEMSCRIPTEN -DRL_TOOLS_ENABLE_JSON \
