@@ -486,23 +486,51 @@ class Policy{
 }
 
 
-function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary); // Base64 encode the binary string
+const CHECKPOINT_DB_NAME = "l2f-studio"
+const CHECKPOINT_STORE_NAME = "checkpoints"
+const CHECKPOINT_KEY = "checkpoint"
+
+function openCheckpointDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(CHECKPOINT_DB_NAME, 1)
+        request.onupgradeneeded = () => {
+            const db = request.result
+            if (!db.objectStoreNames.contains(CHECKPOINT_STORE_NAME)) {
+                db.createObjectStore(CHECKPOINT_STORE_NAME)
+            }
+        }
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+    })
 }
 
-function base64ToArrayBuffer(base64) {
-    const binary = atob(base64); // Decode Base64 to binary string
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binary.charCodeAt(i);
+async function getCheckpoint() {
+    const db = await openCheckpointDB()
+    try {
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(CHECKPOINT_STORE_NAME, "readonly")
+            const request = tx.objectStore(CHECKPOINT_STORE_NAME).get(CHECKPOINT_KEY)
+            request.onsuccess = () => resolve(request.result || null)
+            request.onerror = () => reject(request.error)
+        })
+    } finally {
+        db.close()
     }
-    return bytes.buffer; // Return the ArrayBuffer
+}
+
+async function setCheckpoint(arrayBuffer) {
+    const db = await openCheckpointDB()
+    try {
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(CHECKPOINT_STORE_NAME, "readwrite")
+            tx.objectStore(CHECKPOINT_STORE_NAME).put(arrayBuffer, CHECKPOINT_KEY)
+            tx.oncomplete = () => resolve()
+            tx.onerror = () => reject(tx.error)
+            tx.onabort = () => reject(tx.error)
+        })
+    } finally {
+        db.close()
+    }
 }
 
 function showStatus(message, isError = false) {
@@ -517,7 +545,11 @@ async function load_model(checkpoint) {
     if (typeof checkpoint === "string") {
         checkpoint = await (await fetch(checkpoint)).arrayBuffer()
     }
-    localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
+    try {
+        await setCheckpoint(checkpoint)
+    } catch (e) {
+        console.warn("Failed to persist checkpoint to IndexedDB: ", e)
+    }
     // Before destroying the old model: pause the control loop immediately (so it
     // can't call evaluate_step on the destroyed inference during subsequent awaits)
     // and drop policy state IDs (which reference the about-to-be-freed WASM state vector).
@@ -739,14 +771,17 @@ async function main() {
     const seed = 12
 
     let checkpoint = null
-    if (localStorage.getItem("checkpoint") !== null) {
-        console.log("loading checkpoint from local storage")
-        checkpoint = base64ToArrayBuffer(localStorage.getItem("checkpoint"))
+    try {
+        checkpoint = await getCheckpoint()
+    } catch (e) {
+        console.warn("Failed to read checkpoint from IndexedDB: ", e)
+    }
+    if (checkpoint !== null) {
+        console.log("loading checkpoint from IndexedDB")
     }
     else {
         console.log(`Loading checkpoint from ${file_url}`)
         checkpoint = await (await fetch(file_url)).arrayBuffer()
-        localStorage.setItem("checkpoint", arrayBufferToBase64(checkpoint))
     }
     await load_model(checkpoint)
 
@@ -1183,7 +1218,6 @@ document.body.addEventListener('drop', e => {
         const reader = new FileReader();
         reader.onload = async function (e) {
             const array_buffer = e.target.result;
-            localStorage.setItem("checkpoint", arrayBufferToBase64(array_buffer))
             await load_model(array_buffer)
             console.log("loaded model: ", model.checkpoint_name)
             showStatus(`Loaded model: ${model.checkpoint_name}`);
