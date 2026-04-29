@@ -329,6 +329,21 @@ class Policy{
             }
             case obs === "LinearAccelerationBodyFrame" || obs === "IMUAccelerometer":
                 return full_observation.slice(18, 21)
+            case obs.startsWith("LinearAccelerationBodyFrameHistory"):{
+                const N = parseInt(obs.split("(")[1].split(")")[0])
+                if (N === 0) return []
+                const s = get_state()
+                const buf = s["linear_acceleration_body_history"]
+                if (!buf) { console.error("WASM state missing linear_acceleration_body_history — rebuild WASM with StateLinearAccelerationHistory"); return new Array(3*N).fill(0) }
+                const H = buf.length
+                let step = (s["acceleration_history_step"] - 1 + H) % H
+                const out = []
+                for (let i = 0; i < N; i++) {
+                    out.push(buf[step][0], buf[step][1], buf[step][2])
+                    step = (step - 1 + H) % H
+                }
+                return out
+            }
             case obs.startsWith("ActionHistory"):
                 const history_length_string = obs.split("(")[1].split(")")[0]
                 const history_length = parseInt(history_length_string)
