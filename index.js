@@ -280,6 +280,14 @@ class Policy{
             }
             case obs === "OrientationRotationMatrix":
                 return full_observation.slice(3, 12)
+            case obs === "OrientationBodyZ": {
+                const q = get_state().orientation
+                return [
+                    2 * q[1] * q[3] + 2 * q[0] * q[2],
+                    2 * q[2] * q[3] - 2 * q[0] * q[1],
+                    1 - 2 * q[1] * q[1] - 2 * q[2] * q[2],
+                ]
+            }
             case obs === "OrientationWorldZ": {
                 const q = get_state().orientation
                 return [
