@@ -296,6 +296,8 @@ class Policy{
                     1 - 2 * q[1] * q[1] - 2 * q[2] * q[2],
                 ]
             }
+            case obs === "AttitudeSetpoint":
+                return [0, 0, 0, 1.0]
             case obs === "LinearVelocity" && !force_trajectory_tracking :
                 return current_velocity
             case obs === "TrajectoryTrackingLinearVelocity" || (obs === "LinearVelocity" && force_trajectory_tracking) :{
