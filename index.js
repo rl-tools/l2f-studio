@@ -911,6 +911,7 @@ async function main() {
             const t2i = torque / state.parameters.dynamics.J[0][0]
             vehicle.querySelector(".vehicle-t2w-t2i").textContent = `${t2w.toFixed(2)} / ${t2i.toFixed(2)}`
             vehicle.querySelector(".vehicle-avg-error").textContent = `${(state.avgTrackingError * 100).toFixed(1)} cm`
+            vehicle.querySelector(".vehicle-steps-since-reset").textContent = `${state.stepsSinceReset}`
             vehicle.title = JSON.stringify(state.parameters.dynamics, null, 2)
         })
 

@@ -107,17 +107,21 @@ export class L2F{
         });
         this.dt = null
         this.references = null
-        this.tracking_error = { cumulative: [], steps: [] }
+        this.tracking_error = { cumulative: [], steps: [], total_steps: [] }
     }
     resetTrackingError() {
-        this.tracking_error = { 
-            cumulative: this.states.map(() => 0), 
-            steps: this.states.map(() => 0) 
+        this.tracking_error = {
+            cumulative: this.states.map(() => 0),
+            steps: this.states.map(() => 0),
+            total_steps: this.states.map(() => 0)
         }
     }
     getAverageTrackingError() {
-        return this.tracking_error.cumulative.map((cum, i) => 
+        return this.tracking_error.cumulative.map((cum, i) =>
             this.tracking_error.steps[i] > 0 ? cum / this.tracking_error.steps[i] : 0)
+    }
+    getStepsSinceReset() {
+        return this.tracking_error.total_steps.slice()
     }
     async change_num_quadrotors(num, parameters){
         const diff = num - this.states.length
@@ -151,12 +155,14 @@ export class L2F{
 
         
         const avgErrors = this.getAverageTrackingError()
+        const stepsSinceReset = this.getStepsSinceReset()
         const combined_state = this.render_states.map((state, i) => {
             return {
                 "state": state,
                 "action": this.render_actions[i],
                 "parameters": this.perturbed_parameters[i],
-                "avgTrackingError": avgErrors[i] || 0
+                "avgTrackingError": avgErrors[i] || 0,
+                "stepsSinceReset": stepsSinceReset[i] || 0
             }
         })
         this.state_update_callbacks.forEach(callback => callback(combined_state))
@@ -241,6 +247,9 @@ export class L2F{
         this.states.forEach((state, i) => {
             const dt = state.step()
             dts.push(dt)
+            if (this.tracking_error.total_steps[i] !== undefined) {
+                this.tracking_error.total_steps[i] += 1
+            }
         })
         this.update_render_state()
         if(this.DEBUG){
