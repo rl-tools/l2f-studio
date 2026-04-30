@@ -288,7 +288,7 @@ class Policy{
                     1 - 2 * q[1] * q[1] - 2 * q[2] * q[2],
                 ]
             }
-            case obs === "OrientationWorldZ": {
+            case obs === "OrientationWorldZ" || obs === "OrientationMahonyWorldZ": {
                 const q = get_state().orientation
                 return [
                     2 * q[1] * q[3] - 2 * q[0] * q[2],
