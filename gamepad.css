@@ -1,8 +1,8 @@
-#gamepad-controls {
+#gamepad-controls, .gamepad-controls {
     display: flex;
 }
 
-#gamepad-status {
+#gamepad-status, .gamepad-status {
     padding: 8px;
     margin-bottom: 15px;
     border-radius: 4px;
@@ -16,7 +16,7 @@
     background-color: #f8d7da;
     color: #721c24;
 }
-#gamepad-state{
+#gamepad-state, .gamepad-state {
     display: table;
     border-spacing: 1rem;
     border-collapse: separate;
@@ -51,7 +51,7 @@
     border-radius: 50%;
     background-color: #ccc;
 }
-#gamepad-button-container-container {
+#gamepad-button-container-container, .gamepad-button-container-container {
     display: flex;
     flex: 1;
     flex-direction: row;
@@ -59,7 +59,7 @@
     align-items: center;
     gap: 10px;
 }
-#gamepad-button-container {
+#gamepad-button-container, .gamepad-button-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;

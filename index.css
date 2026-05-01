@@ -323,6 +323,22 @@ canvas{
 #gamepad-container{
     display: none;
 }
+#attitude-setpoint-gamepad-container{
+    display: none;
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    gap: 10px;
+}
+#attitude-setpoint-gamepad-container.active{
+    display: flex;
+}
+.attitude-setpoint-gamepad-label{
+    white-space: nowrap;
+    padding-top: 8px;
+}
+.gamepad-widget-body{
+    flex: 1;
+}
 .policy-container-item{
     display: flex;
     align-items: center;

@@ -5,6 +5,7 @@ import { ParameterManager } from "./parameter_manager.js";
 import * as rlt from "./dyn_inference_wrapper.js"
 import { Gamepad } from "./gamepad.js"
 import { GamepadController } from "./gamepad_controller.js"
+import { AttitudeSetpointGamepadInput, ATTITUDE_SETPOINT_GAMEPAD_INTERFACE, ATTITUDE_SETPOINT_GAMEPAD_STORAGE_KEY } from "./attitude_setpoint_gamepad.js"
 import { Position } from "./trajectories/position.js"
 import { Lissajous } from "./trajectories/lissajous.js"
 import { SecondOrderLangevin } from "./trajectories/langevin.js"
@@ -18,9 +19,93 @@ const file_url = file ? file : "./blob/checkpoint.h5"
 
 let proxy_controller = null
 let l2f = null
+let direct_gamepad = null
+let direct_gamepad_controller = null
+let attitude_setpoint_gamepad = null
+let attitude_setpoint_input = null
+
+const DIRECT_GAMEPAD_INTERFACE = {
+    "thrust": {
+        type: "axis",
+        positive_direction: "Up"
+    },
+    "roll": {
+        type: "axis",
+        positive_direction: "Right"
+    },
+    "pitch": {
+        type: "axis",
+        positive_direction: "Forward"
+    },
+    "yaw": {
+        type: "axis",
+        positive_direction: "Clockwise"
+    },
+    "reset": {
+        type: "button"
+    },
+}
 
 async function sleep(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function observation_includes_attitude_setpoint(obs_string){
+    if(!obs_string) return false
+    return obs_string.split(";").flatMap(branch => branch.split(".")).some(component => component.trim() === "AttitudeSetpoint")
+}
+
+function selected_controller_mode(){
+    return document.querySelector('#controller-selector-container input[name="choice"]:checked')?.value
+}
+
+function ensure_direct_gamepad(){
+    if(direct_gamepad === null){
+        const parent = document.getElementById("gamepad-container")
+        direct_gamepad = new Gamepad(parent, DIRECT_GAMEPAD_INTERFACE, { storageKey: "gamepad_config", enabled: false })
+        direct_gamepad.addListener((output) => {
+            if (output["reset"] === true) {
+                const button = document.getElementById("initial-states")
+                button.dispatchEvent(new Event('click'));
+            }
+        })
+    }
+    return direct_gamepad
+}
+
+function ensure_direct_gamepad_controller(){
+    const gamepad = ensure_direct_gamepad()
+    if(direct_gamepad_controller === null){
+        direct_gamepad_controller = new GamepadController(gamepad)
+    }
+    return direct_gamepad_controller
+}
+
+function ensure_attitude_setpoint_gamepad(){
+    if(attitude_setpoint_gamepad === null){
+        const parent = document.getElementById("attitude-setpoint-gamepad-container")
+        attitude_setpoint_gamepad = new Gamepad(parent, ATTITUDE_SETPOINT_GAMEPAD_INTERFACE, {
+            storageKey: ATTITUDE_SETPOINT_GAMEPAD_STORAGE_KEY,
+            enabled: false,
+        })
+        attitude_setpoint_input = new AttitudeSetpointGamepadInput(attitude_setpoint_gamepad)
+    }
+    return attitude_setpoint_gamepad
+}
+
+function update_attitude_setpoint_gamepad(){
+    const container = document.getElementById("attitude-setpoint-gamepad-container")
+    const obs = document.getElementById("observations")?.observation
+    const visible = observation_includes_attitude_setpoint(obs)
+    if(container){
+        container.classList.toggle("active", visible)
+    }
+    if(visible){
+        ensure_attitude_setpoint_gamepad()
+    }
+    if(attitude_setpoint_gamepad){
+        attitude_setpoint_gamepad.setEnabled(visible && selected_controller_mode() === "policy")
+    }
 }
 
 // Platform mesh hashes and parameter history management
@@ -148,6 +233,7 @@ async function commit_observation(obs_string){
     const obs_input = document.getElementById("observations")
     obs_input.observation = obs_string
     obs_input.value = obs_string
+    update_attitude_setpoint_gamepad()
     const spec = parse_camera_spec(obs_string)
     if(spec && l2f && l2f.parameters){
         for(const p of l2f.parameters){
@@ -297,7 +383,7 @@ class Policy{
                 ]
             }
             case obs === "AttitudeSetpoint":
-                return [0, 0, 0, 1.0]
+                return attitude_setpoint_input?.getObservation(JSON.parse(state.get_parameters())) ?? [0, 0, 0, 1.0]
             case obs === "LinearVelocity" && !force_trajectory_tracking :
                 return current_velocity
             case obs === "TrajectoryTrackingLinearVelocity" || (obs === "LinearVelocity" && force_trajectory_tracking) :{
@@ -720,12 +806,16 @@ async function main() {
                     document.getElementById("policy-container").style.display = "block"
                     document.getElementById("controller-container").style.display = "none"
                     document.getElementById("gamepad-container").style.display = "none"
+                    if(direct_gamepad) direct_gamepad.setEnabled(false)
+                    update_attitude_setpoint_gamepad()
                     proxy_controller.policy = new Policy(model)
                 }
                 else if (event.target.value === "controller") {
                     document.getElementById("policy-container").style.display = "none"
                     document.getElementById("controller-container").style.display = "block"
                     document.getElementById("gamepad-container").style.display = "none"
+                    if(direct_gamepad) direct_gamepad.setEnabled(false)
+                    update_attitude_setpoint_gamepad()
                     const event = new KeyboardEvent("keydown", { key: "Enter" });
                     document.getElementById("controller-code").dispatchEvent(event);
                 }
@@ -733,35 +823,10 @@ async function main() {
                     document.getElementById("policy-container").style.display = "none"
                     document.getElementById("controller-container").style.display = "none"
                     document.getElementById("gamepad-container").style.display = "block"
-                    const parent = document.getElementById("gamepad-container")
-                    const gamepad = new Gamepad(parent, {
-                        "thrust": {
-                            type: "axis",
-                            positive_direction: "Up"
-                        },
-                        "roll": {
-                            type: "axis",
-                            positive_direction: "Right"
-                        },
-                        "pitch": {
-                            type: "axis",
-                            positive_direction: "Forward"
-                        },
-                        "yaw": {
-                            type: "axis",
-                            positive_direction: "Clockwise"
-                        },
-                        "reset": {
-                            type: "button"
-                        },
-                    })
-                    proxy_controller.policy = new GamepadController(gamepad)
-                    gamepad.addListener((output) => {
-                        if (output["reset"] === true) {
-                            const button = document.getElementById("initial-states")
-                            button.dispatchEvent(new Event('click'));
-                        }
-                    })
+                    update_attitude_setpoint_gamepad()
+                    const gamepad = ensure_direct_gamepad()
+                    gamepad.setEnabled(true)
+                    proxy_controller.policy = ensure_direct_gamepad_controller()
                 }
             });
         });

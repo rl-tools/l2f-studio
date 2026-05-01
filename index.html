@@ -64,6 +64,7 @@
     <link rel="stylesheet" href="./index.css">
     <link rel="stylesheet" href="./scroll-indicator.css">
     <link rel="stylesheet" href="./raptor.css">
+    <link rel="stylesheet" href="./gamepad.css">
     <script type="importmap">
         {
             "imports": {
@@ -155,12 +156,23 @@
                         <input type="text" id="observations">
                         </input>
                     </div>
+                    <div id="attitude-setpoint-gamepad-container" class="policy-container-item gamepad-widget">
+                        <span class="attitude-setpoint-gamepad-label">Attitude Setpoint:</span>
+                        <div class="gamepad-widget-body">
+                            <div class="gamepad-status gamepad-disconnected">No gamepad connected (please press button or move axis to connect)</div>
+                            <div class="gamepad-controls">
+                                <div class="gamepad-state"></div>
+                                <div class="gamepad-button-container-container">
+                                    <div class="gamepad-button-container"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="controller-container" class="controller-container">
                     <textarea id="controller-code" rows=10 value="(x, u) => x.map((v, i) => v + u[i] * 0.1)"></textarea>
                 </div>
                 <div id="gamepad-container" class="controller-container">
-                    <link rel="stylesheet" href="./gamepad.css">
                     <template id="gamepad-axis-template">
                         <div class="gamepad-controls-row">
                             <div class="gamepad-controls-name gamepad-controls-cell"></div>
@@ -183,11 +195,11 @@
                             <div></div>
                         </div>
                     </template>
-                    <div id="gamepad-status" class="gamepad-disconnected">No gamepad connected (please press button or move axis to connect)</div>
-                    <div id="gamepad-controls">
-                        <div id="gamepad-state"></div>
-                        <div id="gamepad-button-container-container">
-                            <div id="gamepad-button-container"></div>
+                    <div id="gamepad-status" class="gamepad-status gamepad-disconnected">No gamepad connected (please press button or move axis to connect)</div>
+                    <div id="gamepad-controls" class="gamepad-controls">
+                        <div id="gamepad-state" class="gamepad-state"></div>
+                        <div id="gamepad-button-container-container" class="gamepad-button-container-container">
+                            <div id="gamepad-button-container" class="gamepad-button-container"></div>
                         </div>
                     </div>
                 </div>
