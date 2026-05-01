@@ -157,9 +157,15 @@ namespace builder{
         static constexpr typename PARAMETERS_TYPE::Dynamics DYNAMICS_VALUES[N_DYNAMICS_VALUES] = {
             parameters::dynamics::registry<parameters::dynamics::REGISTRY::crazyflie, PARAMETERS_SPEC>
         };
-        static constexpr T STATE_LIMIT_POSITION = 1000;
-        static constexpr T STATE_LIMIT_VELOCITY = 100;
-        static constexpr T STATE_LIMIT_ANGULAR_VELOCITY = 100;
+        static constexpr T STATE_LIMIT_POSITION_X = 1000;
+        static constexpr T STATE_LIMIT_POSITION_Y = 1000;
+        static constexpr T STATE_LIMIT_POSITION_Z = 1000;
+        static constexpr T STATE_LIMIT_VELOCITY_X = 100;
+        static constexpr T STATE_LIMIT_VELOCITY_Y = 100;
+        static constexpr T STATE_LIMIT_VELOCITY_Z = 100;
+        static constexpr T STATE_LIMIT_ANGULAR_VELOCITY_X = 100;
+        static constexpr T STATE_LIMIT_ANGULAR_VELOCITY_Y = 100;
+        static constexpr T STATE_LIMIT_ANGULAR_VELOCITY_Z = 100;
     };
 }
 
