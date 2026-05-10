@@ -131,6 +131,7 @@ namespace builder{
     };
 
     struct ENVIRONMENT_STATIC_PARAMETERS{
+        static constexpr auto ACTION_INTERFACE = parameters::ActionInterface::DIRECT_MOTOR;
         static constexpr TI N_SUBSTEPS = 10;
         static constexpr TI ACTION_HISTORY_LENGTH = 64;
         static constexpr TI EPISODE_STEP_LIMIT = 5 * SIMULATION_FREQUENCY;
