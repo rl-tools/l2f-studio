@@ -220,7 +220,8 @@ function parse_camera_spec(obs_desc){
     if(visual.startsWith("CameraRGB")){
         return { fov: inner[0], cam_h: inner[1], cam_w: inner[2] }
     }
-    const fov = inner[3] !== undefined ? inner[3] : 1.1132
+    // legacy Visual(w, h, c, fov) carried the horizontal FOV in radians; visual.fov is degrees
+    const fov = inner[3] !== undefined ? inner[3] * 180 / Math.PI : 63.78166175396324
     return { cam_w: inner[0], cam_h: inner[1], fov }
 }
 
@@ -1128,7 +1129,7 @@ async function main() {
         const visual = l2f?.parameters?.[0]?.visual
         const cam_w = visual?.cam_width ?? 64
         const cam_h = visual?.cam_height ?? 64
-        const fov = visual?.fov ?? 1.1132
+        const fov = visual?.fov ?? 63.78166175396324
         if(l2f.ui && l2f.ui.setup_onboard_scene){
             await l2f.ui.setup_onboard_scene(l2f.ui_state, hash, cam_w, cam_h, fov)
             apply_scene_transform()
