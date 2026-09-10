@@ -4,7 +4,7 @@ name: Deploy static content to Pages
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["master"]
+    branches: ["main"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -27,32 +27,32 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: external/rl_tools/static/l2f-studio
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Download dependencies
+        run: ./download_dependencies.sh
       - name: Set Title for L2F Playground
         if: github.repository == 'rl-tools/l2f-studio'
-        run: sed -i 's/__PAGE_TITLE__/L2F Playground/g' index.html
+        run: sed -i 's|<title>.*</title>|<title>L2F Playground</title>|' index.html
       - name: Set Title for RAPTOR
         if: github.repository == 'rl-tools/raptor.rl.tools'
-        run: "sed -i 's/__PAGE_TITLE__/RAPTOR: A Foundation Policy for Quadrotor Control/g' index.html"
+        run: "sed -i 's|<title>.*</title>|<title>RAPTOR: A Foundation Policy for Quadrotor Control</title>|' index.html"
       - name: Set Title for RAPTOR
         if: github.repository == 'jonas-eschmann/ai.new'
-        run: "sed -i 's/__PAGE_TITLE__/RAPTOR: A Foundation Policy for Quadrotor Control/g' index.html"
+        run: "sed -i 's|<title>.*</title>|<title>RAPTOR: A Foundation Policy for Quadrotor Control</title>|' index.html"
       - name: Setup Pages
         uses: actions/configure-pages@v5
-#      - name: Download dependencies
-#        run: npm ci
-#      - name: Build
-#        run: ./bundle.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # Upload the studio and its downloaded assets
+          path: external/rl_tools/static/l2f-studio
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
