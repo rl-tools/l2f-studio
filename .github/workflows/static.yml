@@ -37,6 +37,8 @@ jobs:
           submodules: recursive
       - name: Download dependencies
         run: ./download_dependencies.sh
+      - name: Write RLtools commit
+        run: git -C "$GITHUB_WORKSPACE/external/rl_tools" rev-parse HEAD > git_hash.txt
       - name: Set Title for L2F Playground
         if: github.repository == 'rl-tools/l2f-studio'
         run: sed -i 's|<title>.*</title>|<title>L2F Playground</title>|' index.html
