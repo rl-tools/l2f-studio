@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: external/rl_tools/static/l2f-studio
+        working-directory: rl_tools/static/l2f-studio
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
       - name: Download dependencies
         run: ./download_dependencies.sh
       - name: Write RLtools commit
-        run: git -C "$GITHUB_WORKSPACE/external/rl_tools" rev-parse HEAD > git_hash.txt
+        run: git -C "$GITHUB_WORKSPACE/rl_tools" rev-parse HEAD > git_hash.txt
       - name: Set Title for L2F Playground
         if: github.repository == 'rl-tools/l2f-studio'
         run: sed -i 's|<title>.*</title>|<title>L2F Playground</title>|' index.html
@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload the studio and its downloaded assets
-          path: external/rl_tools/static/l2f-studio
+          path: rl_tools/static/l2f-studio
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
